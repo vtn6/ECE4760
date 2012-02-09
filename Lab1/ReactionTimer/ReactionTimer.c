@@ -39,6 +39,9 @@
 #define DEBOUNCE_TIME 30
 #define RXN_MAX_TIME 1000 
 
+#define RND_MAX 2000
+#define RND_MIN 1000
+
 //set constants for Strings to be displayed on the LCD.
 //these will be stored in flash memory
 const int8_t LCDHello[] PROGMEM = "Hello World\0";
@@ -65,16 +68,16 @@ volatile char pressed;		//flag indicating whether or not the button has been pre
 volatile char pressedAndReleased;	//flag indicating that the button has been pressed and released
 volatile char maybePressed;	//flag indicating that the button has been pressed, but not debounced
 volatile char pushState;	//state variable to keep track of where the debounce state machine is.
-volatile char waitCount;	//the current amount of time that the player has been waiting
 volatile uint16_t rxnCount;	//the amount of time that has elapsed since the LED and buzzer were turned on
 
 char led;					//light states
-char readyDisplayed;		//flag indicating whether or not ready is displayed on the LCD screen
-char randomTimeChosen;		//flag indicating whether or not a time between 1 and 2 seconds was chosen (at random) 
-char ledTurnedOn;			//flag indicating the LED has been turned on
-char scoreDisplayed;		//flag indicating the score has been displayed on the LCD screen
-char cheatDisplayed;		//flag indicating the cheater messaged has been displayed on the LCD
-char waitTime;				//a time between one and two seconds. Determined the amount of time before the LED and buzzer are turned on
+volatile char buzzer;               // flag indicating whether the buzzer should be on or not
+volatile char readyDisplayed;		//flag indicating whether or not ready is displayed on the LCD screen
+volatile char randomTimeChosen;		//flag indicating whether or not a time between 1 and 2 seconds was chosen (at random) 
+volatile char ledTurnedOn;			//flag indicating the LED has been turned on
+volatile char scoreDisplayed;		//flag indicating the score has been displayed on the LCD screen
+volatile char cheatDisplayed;		//flag indicating the cheater messaged has been displayed on the LCD
+volatile uint16_t waitTime;				//a time between one and two seconds. Determined the amount of time before the LED and buzzer are turned on
 int8_t LCDBuffer[17];	// LCD display buffer 
 
 
@@ -101,6 +104,11 @@ ISR (TIMER0_COMPA_vect){
 			Debounce();
 		}
 	}
+	if (buzzer){
+		PORTA ^= 0x01;
+		PORTB ^= 0x80;
+	}
+
 	UpdateGameState();
 
 }
@@ -123,8 +131,10 @@ int main(void){
 		break;
 	
 	case READY:
-		PORTB = ~0x02; //led1
 		if (!readyDisplayed){
+			pressedAndReleased = 0;
+			scoreDisplayed = 0;
+			PORTB = ~0x02; //led1
 			LCDclr();
 			LCDGotoXY(0,0);
 			CopyStringtoLCD(LCDReady, 0, 0);
@@ -133,26 +143,37 @@ int main(void){
 		break;
 
 	case WAITING:
-		PORTB = ~0x04; //led2
 		if (!randomTimeChosen){
+			pressedAndReleased = 0;
+			readyDisplayed = 0;
+			cheatDisplayed = 0;
+			PORTB = ~0x04; //led2
 			LCDclr();
 			//assign a random time to waitTime
-			waitTime = (rand() % 1000) + 1000;
+			waitTime = rand() % (RND_MAX - RND_MIN + 1) + 1000;
 			randomTimeChosen = 1;
 		}
 		break;
 
 	case LED_ON:
-		PORTB = ~0x08; //led3
 		if (!ledTurnedOn){
+			randomTimeChosen = 0;
+			rxnCount = 0;
+			PORTB = ~0x08; //led3
 			//turn the buzzer on
+			buzzer = 1;
 			ledTurnedOn = 1;
 		}
 		break;
 
 	case DISPLAY:
-		PORTB = ~0x10; //led4
 		if (!scoreDisplayed){
+			PORTB = ~0x10; //led4
+
+			buzzer = 0;
+			pressedAndReleased = 0;
+			ledTurnedOn = 0;
+
 			LCDGotoXY(0,0);
 			CopyStringtoLCD(LCDScore, 0, 0);
 			LCDGotoXY(0,0);
@@ -170,12 +191,20 @@ int main(void){
 			LCDGotoXY(11, 1);
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			scoreDisplayed = 1;
+
+			//Store the player's score if it is larger than the current high score
+			if (rxnCount < highScore){
+				eeprom_write_word((uint16_t*)EEPROM_DATA_ADDR,rxnCount);
+			}
+
 		}
 		break;
 
 	case CHEAT: 
-		PORTB = ~0x20; //led5
 		if (!cheatDisplayed){
+			PORTB = ~0x20; //led5
+			randomTimeChosen = 0;
+			buzzer = 0;
 			LCDGotoXY(0, 0);
 			CopyStringtoLCD(LCDCheat, 0, 0);
 			cheatDisplayed = 1;
@@ -189,6 +218,8 @@ int main(void){
 //Set it all up
 void initialize(void) {
   //set up the ports
+  DDRA=0xff;    // PORT A is an output
+  PORTA=0;
   DDRB=0xff;    // PORT B is an output  
   PORTB=0;
   DDRD=0x00;	// PORT D is an input 
@@ -201,6 +232,7 @@ void initialize(void) {
     
   //init the LED status (all off)
   led=0xFF;
+  buzzer = 0;
    
   
   //init the task timers
@@ -231,6 +263,17 @@ void InitLCD(void){
 	LCDclr();				//clear the display
 	LCDGotoXY(0,0);
 	CopyStringtoLCD(LCDHello, 0, 0);
+}
+
+// Reset debouncer and disable
+// Unused right now, will fix
+void resetDebounce(void){
+	pushState = UNKNOWN;
+	pressedAndReleased = 0;
+	pressed = 0;
+	maybePressed = 0;
+
+	debouncing = 0;
 }
 
 //Debounce the button using a debounce state machine
@@ -288,31 +331,27 @@ void UpdateGameState(void){
 	case INITIAL:
 		if (pressedAndReleased){
 			gameState = READY;
-			pressedAndReleased = 0;
+			
 		}
 		break;
 
 	//if in the ready state, switch to the WAITING state when the button is pressed
 	case READY:
-		if (pressedAndReleased){
+		if (readyDisplayed && pressedAndReleased){
 			gameState = WAITING;
-			pressedAndReleased = 0;
-			readyDisplayed = 0;
 		}
 		break;
 
 	//if in the waiting tate, switch to the LED_ON state when the counter reaches the desired time
 	//otherwise, if the played pressed the button, switch to the CHEAT state
 	case WAITING:
-		if (!waitTime--){
-			gameState = LED_ON;
-			randomTimeChosen = 0;
-			rxnCount = 0;
-		}
-		else if (maybePressed || pressed){
-			gameState = CHEAT;
-			randomTimeChosen = 0;
-			debouncing = 0;
+		if (randomTimeChosen){
+			if (!waitTime--){
+				gameState = LED_ON;
+			}
+			else if (maybePressed || pressed){
+				gameState = CHEAT;
+			}
 		}
 		break;
 
@@ -323,30 +362,22 @@ void UpdateGameState(void){
 		}	
 		else if (pressedAndReleased){
 			gameState = DISPLAY;
-			pressedAndReleased = 0;
-			ledTurnedOn = 0;
 		}
 		else if (rxnCount == RXN_MAX_TIME && !(pressed || maybePressed)){
 			gameState = DISPLAY;
-			ledTurnedOn = 0;
 		}
 		break;
 
 	//if in the DISPLAY state, switch to the ready state when the button is pressed
 	case DISPLAY:
-		if (pressedAndReleased){
+		if (scoreDisplayed && pressedAndReleased){
 			gameState = READY;
-			pressedAndReleased = 0;
-			scoreDisplayed = 0;
-			LCDclr();
 		}
 		break;
 
 	case CHEAT: 
 		if (cheatDisplayed && pressedAndReleased){
 			gameState = WAITING;
-			pressedAndReleased = 0;
-			cheatDisplayed = 0;
 		}
 		break;
 	}
