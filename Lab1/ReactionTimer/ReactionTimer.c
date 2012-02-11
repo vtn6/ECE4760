@@ -26,6 +26,8 @@
 // serial communication library
 //#include "uart.h"
 
+#define and &&
+
 //define the states for the game
 #define INITIAL 0
 #define READY 1
@@ -52,10 +54,12 @@
 
 //set constants for Strings to be displayed on the LCD.
 //these will be stored in flash memory
-const int8_t LCDHello[] PROGMEM = "ReactionMaster v9001\0"; // Welcome Message
+const int8_t LCDHello[] PROGMEM = "ReactionMaster\0"; // Welcome Message
+const int8_t LCDHello2[] PROGMEM = " v9001\0";
 const int8_t LCDReady[] PROGMEM = "Ready\0";
 const int8_t LCDCheat[] PROGMEM = "CHEATER\0";
 const int8_t LCDScore[] PROGMEM = "Score: \0";
+const int8_t LCDTooSlow[] PROGMEM = "Too Slow!\0";
 const int8_t LCDHighScore[] PROGMEM = "High Score: \0";
 
 //set constant for the initial value to store in EEPROM
@@ -84,6 +88,7 @@ volatile char randomTimeChosen;		//flag indicating whether or not a time between
 volatile char ledTurnedOn;			//flag indicating the LED has been turned on
 volatile char scoreDisplayed;		//flag indicating the score has been displayed on the LCD screen
 volatile char cheatDisplayed;		//flag indicating the cheater messaged has been displayed on the LCD
+volatile char cheatState;			//flag indicating the player is cheating
 volatile uint16_t waitTime;				//a time between one and two seconds. Determined the amount of time before the LED and buzzer are turned on
 int8_t LCDBuffer[17];	// LCD display buffer
 
@@ -151,6 +156,7 @@ int main(void){
           pressedAndReleased = 0;
           readyDisplayed = 0;
           cheatDisplayed = 0;
+		  cheatState = 0;
           PORTB = ~0x04; //led2
           LCDclr();
           //assign a random time to waitTime
@@ -180,17 +186,17 @@ int main(void){
           pressedAndReleased = 0;
           ledTurnedOn = 0;
 
-          LCDGotoXY(0,0);
-          CopyStringtoLCD(LCDScore, 0, 0);
-          LCDGotoXY(0,0);
+          if(rxnCount == 1000) {
+            CopyStringtoLCD(LCDTooSlow, 0, 0);
+		  } else {
+            CopyStringtoLCD(LCDScore, 0, 0);
+			//Display the player's score
+            //eeprom_write_word((uint16_t*)EEPROM_DATA_ADDR,rxnCount);
+            sprintf(LCDBuffer, "%i", rxnCount);
+            LCDGotoXY(7, 0);
+            LCDstring(LCDBuffer, strlen(LCDBuffer));
+		  }
           CopyStringtoLCD(LCDHighScore, 0, 1);
-
-          //Display the player's score
-          //eeprom_write_word((uint16_t*)EEPROM_DATA_ADDR,rxnCount);
-          sprintf(LCDBuffer, "%i", rxnCount);
-          LCDGotoXY(7, 0);
-          LCDstring(LCDBuffer, strlen(LCDBuffer));
-
           //Display the high score
           uint16_t highScore = eeprom_read_word((uint16_t*)EEPROM_DATA_ADDR);
           sprintf(LCDBuffer, "%i", highScore);
@@ -211,6 +217,7 @@ int main(void){
           PORTB = ~0x20; //led5
           // PORTB = ~0x00; // All off
           randomTimeChosen = 0;
+		  cheatState = 0;
           buzzer = 0;
           LCDGotoXY(0, 0);
           CopyStringtoLCD(LCDCheat, 0, 0);
@@ -271,11 +278,12 @@ void InitLCD(void){
 	LCDclr();				//clear the display
 	LCDGotoXY(0,0);
 	CopyStringtoLCD(LCDHello, 0, 0);
+	CopyStringtoLCD(LCDHello2, 0, 1);
 }
 
 //Debounce the button using a debounce state machine
 void Debounce(void){
-	char down = ~PIND & 0x80; //Read the pin
+	char down = ~PIND & 0x01; //Read the pin
 	switch(pushState){
 	
     //in the released state: stay in this state if the button is not down
@@ -355,11 +363,8 @@ void UpdateGameState(void){
     case LED_ON:
       if (!maybePressed && !pressed && !pressedAndReleased){
         rxnCount++;
-      }	
-      else if (pressedAndReleased){
-        gameState = DISPLAY;
       }
-      else if (rxnCount == RXN_MAX_TIME && !(pressed || maybePressed)){
+	  if (pressedAndReleased || ((rxnCount == RXN_MAX_TIME) && !(pressed || maybePressed))){
         gameState = DISPLAY;
       }
       break;
@@ -372,8 +377,12 @@ void UpdateGameState(void){
       break;
 
     case CHEAT:
-      if (cheatDisplayed && pressedAndReleased){
-        gameState = WAITING;
+	  if (pressedAndReleased && !cheatState){
+	    cheatState = 1;
+		pressedAndReleased = 0;
+	  }
+      else if (cheatDisplayed && pressedAndReleased && cheatState){
+        gameState = READY;
       }
       break;
 	}
