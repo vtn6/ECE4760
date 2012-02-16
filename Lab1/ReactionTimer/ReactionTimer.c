@@ -1,3 +1,5 @@
+// Mega644 version
+
 // ReactionMaster v9001
 // How to connect stuff:
 // Jumper from PORTB to LEDs
@@ -5,8 +7,6 @@
 // Jumper from PORTD to Switches
 // Connect speaker to PORTA[0]
 // 16MHz clock
-
-// Mega644 version
 
 #include <inttypes.h>
 #include <avr/io.h>
@@ -132,7 +132,9 @@ int main(void){
     eeprom_write_byte((uint8_t*)EEPROM_TRUE_ADDR,'R');
   }
 
-  //main task scheduler loop
+  // main task scheduler loop
+  // set LEDs corresponding to state
+  // LED7 is used as reaction timer LED
   while(1){
     switch (gameState){
       case INITIAL:
@@ -156,7 +158,7 @@ int main(void){
           pressedAndReleased = 0;
           readyDisplayed = 0;
           cheatDisplayed = 0;
-      cheatState = 0;
+          cheatState = 0;
           PORTB = ~0x04; //led2
           LCDclr();
           //assign a random time to waitTime
@@ -171,7 +173,7 @@ int main(void){
           rxnCount = 0;
           PORTB = ~(0x08 | 0x80); //led7 and led3
           // PORTB = ~0x80; // led7
-          //turn the buzzer on
+          // turn the buzzer on
           buzzer = 1;
           ledTurnedOn = 1;
         }
@@ -188,14 +190,14 @@ int main(void){
 
           if(rxnCount == 1000) {
             CopyStringtoLCD(LCDTooSlow, 0, 0);
-      } else {
+          } else {
             CopyStringtoLCD(LCDScore, 0, 0);
-      //Display the player's score
+            //Display the player's score
             //eeprom_write_word((uint16_t*)EEPROM_DATA_ADDR,rxnCount);
             sprintf(LCDBuffer, "%i", rxnCount);
             LCDGotoXY(7, 0);
             LCDstring(LCDBuffer, strlen(LCDBuffer));
-      }
+          }
           CopyStringtoLCD(LCDHighScore, 0, 1);
           //Display the high score
           uint16_t highScore = eeprom_read_word((uint16_t*)EEPROM_DATA_ADDR);
@@ -217,7 +219,7 @@ int main(void){
           PORTB = ~0x20; //led5
           // PORTB = ~0x00; // All off
           randomTimeChosen = 0;
-      cheatState = 0;
+          cheatState = 0;
           buzzer = 0;
           LCDGotoXY(0, 0);
           CopyStringtoLCD(LCDCheat, 0, 0);
@@ -364,7 +366,7 @@ void UpdateGameState(void){
       if (!maybePressed && !pressed && !pressedAndReleased){
         rxnCount++;
       }
-    if (pressedAndReleased || ((rxnCount == RXN_MAX_TIME) && !(pressed || maybePressed))){
+      if (pressedAndReleased || ((rxnCount == RXN_MAX_TIME) && !(pressed || maybePressed))){
         gameState = DISPLAY;
       }
       break;
@@ -377,10 +379,10 @@ void UpdateGameState(void){
       break;
 
     case CHEAT:
-    if (pressedAndReleased && !cheatState){
-      cheatState = 1;
-    pressedAndReleased = 0;
-    }
+      if (pressedAndReleased && !cheatState){
+        cheatState = 1;
+        pressedAndReleased = 0;
+      }
       else if (cheatDisplayed && pressedAndReleased && cheatState){
         gameState = READY;
       }
