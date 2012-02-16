@@ -65,32 +65,32 @@ const int8_t LCDHighScore[] PROGMEM = "High Score: \0";
 //set constant for the initial value to store in EEPROM
 const uint16_t DEFAULT_SCORE = 1000;
 
-void UpdateGameState(void);	//update the state of the game
+void UpdateGameState(void);  //update the state of the game
 void initialize(void); //all the usual mcu stuff
-void Debounce(void);	//debounce the button
-void InitLCD(void);		//initialize the LCD
+void Debounce(void);  //debounce the button
+void InitLCD(void);    //initialize the LCD
 
 
-volatile uint16_t elapsedTime;	//timer to keep tracK of time
-volatile char gameState;	//state variable to Know what to execute
-volatile char debouncing;	//flag indicating whether or not the button is being debounced
-volatile char debounceCountdown;	//used to control when the button input is read when bebouncing the signal
-volatile char pressTime;	//the time when a button press occurs
-volatile char pressed;		//flag indicating whether or not the button has been pressed
-volatile char pressedAndReleased;	//flag indicating that the button has been pressed and released
-volatile char maybePressed;	//flag indicating that the button has been pressed, but not debounced
-volatile char pushState;	//state variable to keep track of where the debounce state machine is.
-volatile uint16_t rxnCount;	//the amount of time that has elapsed since the LED and buzzer were turned on
+volatile uint16_t elapsedTime;  //timer to keep tracK of time
+volatile char gameState;  //state variable to Know what to execute
+volatile char debouncing;  //flag indicating whether or not the button is being debounced
+volatile char debounceCountdown;  //used to control when the button input is read when bebouncing the signal
+volatile char pressTime;  //the time when a button press occurs
+volatile char pressed;    //flag indicating whether or not the button has been pressed
+volatile char pressedAndReleased;  //flag indicating that the button has been pressed and released
+volatile char maybePressed;  //flag indicating that the button has been pressed, but not debounced
+volatile char pushState;  //state variable to keep track of where the debounce state machine is.
+volatile uint16_t rxnCount;  //the amount of time that has elapsed since the LED and buzzer were turned on
 
 volatile char buzzer;               // flag indicating whether the buzzer should be on or not
-volatile char readyDisplayed;		//flag indicating whether or not ready is displayed on the LCD screen
-volatile char randomTimeChosen;		//flag indicating whether or not a time between 1 and 2 seconds was chosen (at random)
-volatile char ledTurnedOn;			//flag indicating the LED has been turned on
-volatile char scoreDisplayed;		//flag indicating the score has been displayed on the LCD screen
-volatile char cheatDisplayed;		//flag indicating the cheater messaged has been displayed on the LCD
-volatile char cheatState;			//flag indicating the player is cheating
-volatile uint16_t waitTime;				//a time between one and two seconds. Determined the amount of time before the LED and buzzer are turned on
-int8_t LCDBuffer[17];	// LCD display buffer
+volatile char readyDisplayed;    //flag indicating whether or not ready is displayed on the LCD screen
+volatile char randomTimeChosen;    //flag indicating whether or not a time between 1 and 2 seconds was chosen (at random)
+volatile char ledTurnedOn;      //flag indicating the LED has been turned on
+volatile char scoreDisplayed;    //flag indicating the score has been displayed on the LCD screen
+volatile char cheatDisplayed;    //flag indicating the cheater messaged has been displayed on the LCD
+volatile char cheatState;      //flag indicating the player is cheating
+volatile uint16_t waitTime;        //a time between one and two seconds. Determined the amount of time before the LED and buzzer are turned on
+int8_t LCDBuffer[17];  // LCD display buffer
 
 
 // UART file descriptor
@@ -102,39 +102,39 @@ int8_t LCDBuffer[17];	// LCD display buffer
 //Executes every 1ms
 ISR (TIMER0_COMPA_vect){
 
-	elapsedTime++;
+  elapsedTime++;
 
-	//Check to see if we are currently debouncing a signal
-	//if the signal isn't being debounced, checK if the button has been pressed
-	//if we are waiting for it to be pressed or checK if it is not pressed if we are waiting for
-	//the release event
-	if (!debouncing){
-		Debounce();
-	}
-	else if (!debounceCountdown--){
-		Debounce();
-	}
-	if (buzzer){
+  //Check to see if we are currently debouncing a signal
+  //if the signal isn't being debounced, checK if the button has been pressed
+  //if we are waiting for it to be pressed or checK if it is not pressed if we are waiting for
+  //the release event
+  if (!debouncing){
+    Debounce();
+  }
+  else if (!debounceCountdown--){
+    Debounce();
+  }
+  if (buzzer){
     // Toggle buzzer at 500Hz
-		PORTA ^= 0x01;
-	}
+    PORTA ^= 0x01;
+  }
 
-	UpdateGameState();
+  UpdateGameState();
 }
 
 //**********************************************************
 //Entry point and task scheduler loop
 int main(void){
- 	initialize();
+   initialize();
   // Check if R (for ReactionMaster) is written. Write default score if not
-	if (eeprom_read_byte((uint8_t*)EEPROM_TRUE_ADDR) != 'R'){
-		eeprom_write_word((uint16_t*)EEPROM_DATA_ADDR,DEFAULT_SCORE);
-		eeprom_write_byte((uint8_t*)EEPROM_TRUE_ADDR,'R');
-	}
+  if (eeprom_read_byte((uint8_t*)EEPROM_TRUE_ADDR) != 'R'){
+    eeprom_write_word((uint16_t*)EEPROM_DATA_ADDR,DEFAULT_SCORE);
+    eeprom_write_byte((uint8_t*)EEPROM_TRUE_ADDR,'R');
+  }
 
   //main task scheduler loop
   while(1){
-  	switch (gameState){
+    switch (gameState){
       case INITIAL:
         PORTB = ~0x01; //led0
         break;
@@ -156,7 +156,7 @@ int main(void){
           pressedAndReleased = 0;
           readyDisplayed = 0;
           cheatDisplayed = 0;
-		  cheatState = 0;
+      cheatState = 0;
           PORTB = ~0x04; //led2
           LCDclr();
           //assign a random time to waitTime
@@ -188,14 +188,14 @@ int main(void){
 
           if(rxnCount == 1000) {
             CopyStringtoLCD(LCDTooSlow, 0, 0);
-		  } else {
+      } else {
             CopyStringtoLCD(LCDScore, 0, 0);
-			//Display the player's score
+      //Display the player's score
             //eeprom_write_word((uint16_t*)EEPROM_DATA_ADDR,rxnCount);
             sprintf(LCDBuffer, "%i", rxnCount);
             LCDGotoXY(7, 0);
             LCDstring(LCDBuffer, strlen(LCDBuffer));
-		  }
+      }
           CopyStringtoLCD(LCDHighScore, 0, 1);
           //Display the high score
           uint16_t highScore = eeprom_read_word((uint16_t*)EEPROM_DATA_ADDR);
@@ -217,7 +217,7 @@ int main(void){
           PORTB = ~0x20; //led5
           // PORTB = ~0x00; // All off
           randomTimeChosen = 0;
-		  cheatState = 0;
+      cheatState = 0;
           buzzer = 0;
           LCDGotoXY(0, 0);
           CopyStringtoLCD(LCDCheat, 0, 0);
@@ -242,10 +242,10 @@ void initialize(void) {
   DDRD=0x00;
 
   //set up timer 0 for 1 mSec ticks
-  TIMSK0 = 2;		//turn on timer 0 cmp match ISR
-  OCR0A = 249;  	//set the compare reg to 250 time ticks
+  TIMSK0 = 2;    //turn on timer 0 cmp match ISR
+  OCR0A = 249;    //set the compare reg to 250 time ticks
   TCCR0A = 0b00000010; // turn on clear-on-match
-  TCCR0B = 0b00000011;	// clock prescalar to 64
+  TCCR0B = 0b00000011;  // clock prescalar to 64
 
   //init the LED status (all off)
   buzzer = 0;
@@ -273,19 +273,19 @@ void initialize(void) {
 
 //Initialize the LCD
 void InitLCD(void){
-	LCDinit();	//initialize the display
-	LCDcursorOFF();
-	LCDclr();				//clear the display
-	LCDGotoXY(0,0);
-	CopyStringtoLCD(LCDHello, 0, 0);
-	CopyStringtoLCD(LCDHello2, 0, 1);
+  LCDinit();  //initialize the display
+  LCDcursorOFF();
+  LCDclr();        //clear the display
+  LCDGotoXY(0,0);
+  CopyStringtoLCD(LCDHello, 0, 0);
+  CopyStringtoLCD(LCDHello2, 0, 1);
 }
 
 //Debounce the button using a debounce state machine
 void Debounce(void){
-	char down = ~PIND & 0x01; //Read the pin
-	switch(pushState){
-	
+  char down = ~PIND & 0x01; //Read the pin
+  switch(pushState){
+  
     //in the released state: stay in this state if the button is not down
     //go to UnKnown if the button is down, reset the debounce countdown.
     case RELEASED:
@@ -330,7 +330,7 @@ void Debounce(void){
 
 //Update the state of the machine based on the current state
 void UpdateGameState(void){
-	switch (gameState){
+  switch (gameState){
 
     //if in the initial state switch to the READY state when the button is pressed
     case INITIAL:
@@ -364,7 +364,7 @@ void UpdateGameState(void){
       if (!maybePressed && !pressed && !pressedAndReleased){
         rxnCount++;
       }
-	  if (pressedAndReleased || ((rxnCount == RXN_MAX_TIME) && !(pressed || maybePressed))){
+    if (pressedAndReleased || ((rxnCount == RXN_MAX_TIME) && !(pressed || maybePressed))){
         gameState = DISPLAY;
       }
       break;
@@ -377,13 +377,13 @@ void UpdateGameState(void){
       break;
 
     case CHEAT:
-	  if (pressedAndReleased && !cheatState){
-	    cheatState = 1;
-		pressedAndReleased = 0;
-	  }
+    if (pressedAndReleased && !cheatState){
+      cheatState = 1;
+    pressedAndReleased = 0;
+    }
       else if (cheatDisplayed && pressedAndReleased && cheatState){
         gameState = READY;
       }
       break;
-	}
+  }
 }
