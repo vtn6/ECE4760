@@ -79,6 +79,9 @@ const uint8_t LCDAutorangeMan1Top[] PROGMEM = "D TO TOGGLE\0";
 const uint8_t LCDAutorangeMan1Bot[] PROGMEM = "AUTORANGE\0";
 const uint8_t LCDAutorangeMan2Top[] PROGMEM = "1 TO SWITCH\0";
 const uint8_t LCDAutorangeMan2Bot[] PROGMEM = "AUTORANGE VALUE\0";
+const float VrefRanges[3] = {5.0, 2.56, 1.1};
+const uint8_t resistorRanges[3] = {100, 10, 1};
+const uint8_t frequencyRanges[2] = {10, 1};
 //END LCD STRINGS**************************************************************
 
 //DECLARE VOLATILE VARIABLES***************************************************
@@ -96,6 +99,10 @@ volatile uint8_t justSwitched;	//did the DMM just switch states
 volatile uint8_t rangeIdx;		//which range is currently selected (not AR)
 volatile uint8_t rangeIdxMod;	//limits rangeIdx to 2 or 3
 volatile uint8_t triggerPoll;   // set to true to poll the inputs
+volatile uint8_t Ain;//, AinLow; //The voltage to measure
+volatile float Vref;			//The reference voltage
+volatile uint8_t ohmRef;			//The reference resistor
+volatile uint8_t frequencyRef;	//The reference freuqnecy
 //END VOLATILE VARIABLES*******************************************************
 
 //UART STUFF*******************************************************************
@@ -111,8 +118,9 @@ unsigned char keytbl[MAX_KEYS]={0xee, 0xed, 0xeb,
 						  		0xe7, 0xd7, 0xb7,
 								0x77, 0x7e, 0x7b, 0x7d};
 
-uint8_t Ain; 		//raw A to D number
-uint8_t LCDBuffer[17];  // LCD display buffer
+//uint8_t Ain; 		//raw A to D number
+uint8_t LCDBuffer[6];  // LCD display buffer
+float voltage;
 //END VARIABLES****************************************************************
 
 //DECLARE FUNCTION SIGNATURES**************************************************
@@ -138,6 +146,7 @@ ISR (TIMER0_COMPA_vect){
 	
 	//check for overflow. If the elapsedTime overflows, reset debounceTime
 	//as well
+	
 	uint8_t debounceFlag1 = 1;
 	uint8_t debounceFlag2 = 0;
 	if (elapsedTime >= debounceTime && debounceTime < DEBOUNCE_TIME){
@@ -159,13 +168,20 @@ ISR (TIMER0_COMPA_vect){
 		UpdateDMMState();
 	}
 
-	if((elapsedTime % 200) == 0) {
+	if((elapsedTime % 100) == 0) {
     	triggerPoll = 1;
   	}
 }
 
 //END TIMER INTERRUPTS*********************************************************
 
+//ADC INTERRUPTS***************************************************************
+/*
+ISR (ADC_vect) {
+   Ain = ADCH; 
+}
+*/
+//END ADC INTERRUPTS***********************************************************
 
 //HELPER FUNCTIONS*************************************************************
 uint8_t ScanKeypad(void){
@@ -267,12 +283,12 @@ void Initialize(void) {
   //init the A to D converter
   //channel zero/ left adj /EXTERNAL Aref
   //!!!CONNECT Aref jumper!!!!
-  ADMUX = (1<<ADLAR);
+  //ADMUX = (1<<ADLAR);
 
   //enable ADC and set prescaler to 1/128*16MHz=125,000
   //and clear interupt enable
   //and start a conversion
-  ADCSRA = (1<<ADEN) | (1<<ADSC) + 7;
+  //ADCSRA = (1<<ADEN) | (1<<ADSC) + 7;
 
   // Set A to input (high impedence)
   // Set E as output
@@ -316,6 +332,9 @@ void Initialize(void) {
   keyState = RELEASED;
   rangeIdx = 0;
   rangeIdxMod = 3;
+  Vref = VrefRanges[rangeIdx];
+  ohmRef = resistorRanges[rangeIdx];
+  frequencyRef = frequencyRanges[rangeIdx];
   justSwitched = 0;
   PORTB = ~0x01;
   InitLCD();
@@ -377,6 +396,7 @@ void UpdateDMMState(void){
 				else if (!autoRange && key == 0x01){
 					rangeIdx++;
 					rangeIdx = rangeIdx % rangeIdxMod;
+					Vref = VrefRanges[rangeIdx];
 					justSwitched = 1;
 				}
 				else if (key == 0x0B){
@@ -412,6 +432,7 @@ void UpdateDMMState(void){
 					mode = VOLTMETER;
 					rangeIdxMod = 3;
 					rangeIdx = rangeIdx % rangeIdxMod;
+					ohmRef = resistorRanges[rangeIdx];
 					justSwitched = 1;
 				}
 				else if (key == 0x0C){
@@ -435,6 +456,7 @@ void UpdateDMMState(void){
 				else if (!autoRange && key == 0x01){
 					rangeIdx++;
 					rangeIdx = rangeIdx % rangeIdxMod;
+					frequencyRef = frequencyRanges[rangeIdx];
 					justSwitched = 1;
 				}
 				else if (key == 0x0A){
@@ -604,7 +626,22 @@ int main(void){
 			PORTB = ~key;
 		}
 		if(triggerPoll) {
-     		//poll();
+			//print the previous result then start a new conversion
+			/*
+     		ADCSRA |= (1<<ADSC);
+			triggerPoll = 0;
+			voltage = (float)Ain ;
+      		voltage = (voltage/255.0)*Vref ; //(fraction of full scale)*Vref
+			dtostrf(voltage, 6, 3, LCDBuffer);
+			*/
+			Ain = ADCH;
+	 		//start another conversion
+	 		ADCSRA |= (1<<ADSC) ; 
+			sprintf(LCDBuffer, "%d", Ain);
+	 		//results to hyperterm
+	  		LCDGotoXY(0, 0);
+	  		LCDstring(LCDBuffer, strlen(LCDBuffer));
+			triggerPoll = 0;
     	}
 	    if (justSwitched){
 			switch (mode){
@@ -721,6 +758,23 @@ int main(void){
 			}
 
 			justSwitched = 0;
+		}
+		else{
+			switch (mode){
+				case VOLTMETER:
+					LCDGotoXY(0, 0);
+  					LCDstring(LCDBuffer, strlen(LCDBuffer));
+					break;
+
+				case OHMMETER:
+					LCDGotoXY(0, 0);
+					LCDstring(LCDBuffer, strlen(LCDBuffer));
+					break;
+				case FREQMETER:
+					LCDGotoXY(0, 0);
+				  	LCDstring(LCDBuffer, strlen(LCDBuffer));
+					break;
+			}
 		}
 	}
 
