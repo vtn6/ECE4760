@@ -110,6 +110,9 @@ unsigned char keytbl[MAX_KEYS]={0xee, 0xed, 0xeb,
 						  		0xbe, 0xbd, 0xbb, 
 						  		0xe7, 0xd7, 0xb7,
 								0x77, 0x7e, 0x7b, 0x7d};
+
+uint8_t Ain; 		//raw A to D number
+uint8_t LCDBuffer[17];  // LCD display buffer
 //END VARIABLES****************************************************************
 
 //DECLARE FUNCTION SIGNATURES**************************************************
@@ -119,6 +122,7 @@ void Debounce(void);
 void InitLCD(void);
 void UpdateDMMState(void);
 void UpdateManState(uint8_t);
+void Poll(void);
 //END FUNCTION SIGNATURES******************************************************
 
 //TIMER INTERRUPTS*************************************************************
@@ -131,10 +135,33 @@ ISR (TIMER0_COMPA_vect){
 	//if the signal isn't being debounced, checK if the button has been pressed
 	//if we are waiting for it to be pressed or checK if it is not pressed if we are waiting for
 	//the release event
-	if (++elapsedTime >= debounceTime){
+	
+	//check for overflow. If the elapsedTime overflows, reset debounceTime
+	//as well
+	uint8_t debounceFlag1 = 1;
+	uint8_t debounceFlag2 = 0;
+	if (elapsedTime >= debounceTime && debounceTime < DEBOUNCE_TIME){
+		debounceFlag1 = 0;
+	}
+	
+	//check if we are waiting to debounce. If we are, then take precautions
+	//so that there are no overflow errors
+	if (0xff - debounceTime < DEBOUNCE_TIME){
+		uint8_t diff = 0xff - debounceTime;
+		if (elapsedTime >= DEBOUNCE_TIME - diff){
+			debounceFlag2 = 1;
+		}
+	}
+
+	elapsedTime++;
+	if ((elapsedTime >= debounceTime && debounceFlag1) || (elapsedTime < debounceTime && debounceFlag2)){
 		Debounce();
 		UpdateDMMState();
 	}
+
+	if((elapsedTime % 200) == 0) {
+    	triggerPoll = 1;
+  	}
 }
 
 //END TIMER INTERRUPTS*********************************************************
@@ -269,10 +296,20 @@ void Initialize(void) {
   TCCR0A = 0b00000010; // turn on clear-on-match
   TCCR0B = 0b00000011;	// clock prescalar to 64
 
+  //set up timer 1 to interrupt on capture
+  //TIMSK1 = (1 << ICIE1); //turn on timer1 input capture ISR
+  //TCCR1A = 0b00000010;
+  //TCCR1B = (1 << ICNC1) | (1 << ICES1) | 0b00000101; // Start 
+
+  // init the UART -- uart_init() is in uart.c
+  //uart_init();
+  //stdout = stdin = stderr = &uart_str;
+  //fprintf(stdout,"Starting ADC demo...\n\r");
+
   //initialize the current key to null
   curKey = 0;
-  elapsedTime = 0;
-  debounceTime = 0;
+  elapsedTime = 30;
+  debounceTime = 30;
   autoRange = 0;
   mode = INIT;
   manPage = WELCOME;
@@ -535,6 +572,27 @@ void UpdateManState(uint8_t key){
 	}
 }
 
+void poll(void) {
+  //get the sample
+  Ain = ADCH;
+  //start another conversion
+  ADCSRA |= (1<<ADSC);
+  //results to hyperterm
+  //printf("%d\n\r",Ain);
+  //results to LCD
+  LCDclr();
+  sprintf(LCDBuffer, "%d", Ain);
+  LCDGotoXY(0, 0);
+  LCDstring(LCDBuffer, strlen(LCDBuffer));
+  //fancy stuff
+  //voltage = (float)Ain;
+  //voltage = (voltage/1024.0)*Vref;
+  //dtostrf(voltage, 6, 3, v_string);
+  //("%s",v_string);
+  //finished polling
+  triggerPoll = 0;
+}
+
 //END HELPER FUNCTIONS*********************************************************
 
 int main(void){
@@ -545,6 +603,9 @@ int main(void){
 		if (key){
 			PORTB = ~key;
 		}
+		if(triggerPoll) {
+     		//poll();
+    	}
 	    if (justSwitched){
 			switch (mode){
 				case MAN:
@@ -577,7 +638,7 @@ int main(void){
 						case FREQ_MAN:
 							LCDclr();
 					  		CopyStringtoLCD(LCDFreqManTop, 0, 0);
-					  		CopyStringtoLCD(LCDFreqManTop, 0, 1);
+					  		CopyStringtoLCD(LCDFreqManBot, 0, 1);
 							break;
 						case AUTORANGE_MAN_1:
 							LCDclr();
@@ -601,8 +662,18 @@ int main(void){
 				  	}
 				  	else{
 				  		CopyStringtoLCD(LCDRange, 0, 1);
-						CopyStringtoLCD(LCD5Volts, RANGE_START, 1);
-				  	}
+						switch (rangeIdx){
+							case 0:
+								CopyStringtoLCD(LCD5Volts, RANGE_START, 1);
+								break;
+							case 1:
+								CopyStringtoLCD(LCD256Volts, RANGE_START, 1);
+								break;
+							case 2:
+								CopyStringtoLCD(LCD11Volts, RANGE_START, 1);
+								break;
+						}
+				  	}	
 			    	break;
 
 			  	case OHMMETER:
@@ -614,7 +685,17 @@ int main(void){
 				  	}
 				  	else{
 				  		CopyStringtoLCD(LCDRange, 0, 1);
-						CopyStringtoLCD(LCD1kOhm, RANGE_START, 1);
+						switch (rangeIdx){
+							case 0:
+								CopyStringtoLCD(LCD100kOhm, RANGE_START, 1);
+								break;
+							case 1:
+								CopyStringtoLCD(LCD10kOhm, RANGE_START, 1);
+								break;
+							case 2:
+								CopyStringtoLCD(LCD1kOhm, RANGE_START, 1);
+								break;
+						}
 				  	}
 			    	break;
 
@@ -627,7 +708,14 @@ int main(void){
 				  	}
 				  	else{
 				  		CopyStringtoLCD(LCDRange, 0, 1);
-						CopyStringtoLCD(LCD10kHz, RANGE_START, 1);
+						switch (rangeIdx){
+							case 0:
+								CopyStringtoLCD(LCD10kHz, RANGE_START, 1);
+								break;
+							case 1:
+								CopyStringtoLCD(LCD1kHz, RANGE_START, 1);
+								break;
+						}
 				  	}
 				    break;
 			}
