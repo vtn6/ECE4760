@@ -47,8 +47,8 @@
 //END STATES FOR THE MANUAL****************************************************
 
 //DEFINE LCD STRINGS***********************************************************
-const uint8_t LCDBlank[] PROGMEM = "                \0"; // Blank message
-const uint8_t LCDHelloTop[] PROGMEM = "DMM MASTER v9001\0"; // Welcome Message
+const uint8_t LCDBlank[] PROGMEM = "                \0";	// Blank message
+const uint8_t LCDHelloTop[] PROGMEM = "DMM MASTER v9001\0";	// Welcome Message
 const uint8_t LCDHelloBot[] PROGMEM = "PRESS # FOR HELP\0";
 const uint8_t LCDRange[] PROGMEM = "RANGE: \0";
 const uint8_t LCDAutorangeOn[] PROGMEM = "AUTORANGE: ON\0";
@@ -83,6 +83,7 @@ const uint8_t LCDAutorangeMan2Bot[] PROGMEM = "AUTORANGE VALUE\0";
 const float VrefRanges[3] = {5.0, 2.56, 1.1};
 const uint8_t resistorRanges[3] = {100, 10, 1};
 const uint8_t frequencyRanges[2] = {10, 1};
+const uint8_t TIMERAprescalars[2] = {0x01, 0x02}; //TODO: Implement
 //END LCD STRINGS**************************************************************
 
 //DECLARE VOLATILE VARIABLES***************************************************
@@ -99,11 +100,14 @@ volatile uint8_t autoRange;		//is the DMM in autorange mode
 volatile uint8_t justSwitched;	//did the DMM just switch states
 volatile uint8_t rangeIdx;		//which range is currently selected (not AR)
 volatile uint8_t rangeIdxMod;	//limits rangeIdx to 2 or 3
-volatile uint8_t triggerPoll;   // set to true to poll the inputs
-volatile char Ain;//, AinLow; //The voltage to measure
+volatile uint8_t triggerPoll;	// set to true to poll the inputs
+volatile char Ain;//, AinLow;	//The voltage to measure
 volatile float Vref;			//The reference voltage
 volatile uint8_t ohmRef;			//The reference resistor
 volatile uint8_t frequencyRef;	//The reference freuqnecy
+volatile uint8_t T1Capture;		//Used for determining frequency
+volatile uint8_t lastT1Capture;	//Used for determining frequency
+volatile uint8_t period;		//Period of the waveform measured
 //END VOLATILE VARIABLES*******************************************************
 
 //UART STUFF*******************************************************************
@@ -114,9 +118,9 @@ FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 
 //DECLARE VARIABLES************************************************************
 unsigned char keytbl[MAX_KEYS]={0xee, 0xed, 0xeb, 
-						  		0xde, 0xdd, 0xdb, 
-						  		0xbe, 0xbd, 0xbb, 
-						  		0xe7, 0xd7, 0xb7,
+								0xde, 0xdd, 0xdb, 
+								0xbe, 0xbd, 0xbb, 
+								0xe7, 0xd7, 0xb7,
 								0x77, 0x7e, 0x7b, 0x7d};
 
 //uint8_t Ain; 		//raw A to D number
@@ -134,6 +138,9 @@ void InitLCD(void);
 void UpdateDMMState(void);
 void UpdateManState(uint8_t);
 void Poll(void);
+void setVref(uint8_t);
+void setOref(uint8_t);
+void Autorange(void);
 //END FUNCTION SIGNATURES******************************************************
 
 //TIMER INTERRUPTS*************************************************************
@@ -172,8 +179,41 @@ ISR (TIMER0_COMPA_vect){
 	}
 
 	if((elapsedTime % 200) == 0) {
-    	triggerPoll = 1;
-  	}
+		triggerPoll = 1;
+	}
+}
+
+ISR (TIMER1_CAPT_vect){
+	//read the timer1 capture register
+	T1Capture = ICR1;
+	
+	//period is the difference between this capture and the previous one
+	period = T1Capture - lastT1Capture;
+	lastT1Capture = T1Capture;
+
+	//if the period is too small, change the prescalar
+	if (period < 100){
+		rangeIdx--;
+		rangeIdx = rangeIdx % rangeIdxMod;
+		frequencyRef = frequencyRanges[rangeIdx];
+		
+		//Set up the TIMERA prescalar
+		TCCR1B &= ~0x07;
+		TCCR1B |= TIMERAprescalars[rangeIdx];
+		justSwitched = 1;
+	}
+}
+
+ISR (TIMER1_OVF_vect){
+	//the clock is running too fast, slow down the frequency
+	rangeIdx++;
+	rangeIdx = rangeIdx % rangeIdxMod;
+	frequencyRef = frequencyRanges[rangeIdx];
+	
+	//Set up the TIMERA prescalar
+	TCCR1B &= ~0x07;
+	TCCR1B |= TIMERAprescalars[rangeIdx];
+	justSwitched = 1;	
 }
 
 //END TIMER INTERRUPTS*********************************************************
@@ -181,7 +221,7 @@ ISR (TIMER0_COMPA_vect){
 //ADC INTERRUPTS***************************************************************
 /*
 ISR (ADC_vect) {
-   Ain = ADCH; 
+	Ain = ADCH; 
 }
 */
 //END ADC INTERRUPTS***********************************************************
@@ -191,31 +231,31 @@ uint8_t ScanKeypad(void){
 	uint8_t key;
 	uint8_t butnum;
 //get lower nibble
-  	DDRD = 0x0f;
-  	PORTD = 0xf0; 
-  	_delay_us(5);
-  	key = PIND;
-  	  
-  	//get upper nibble
-  	DDRD = 0xf0;
-  	PORTD = 0x0f; 
-  	_delay_us(5);
-  	key = key | PIND;
-  	  
-  	//find matching keycode in keytbl
-  	if (key != 0xff)
-  	begin   
-  	  for (butnum=0; butnum<MAX_KEYS; butnum++)
-  	  begin   
-  	  	if (keytbl[butnum]==key)  break;   
-  	  end
+	DDRD = 0x0f;
+	PORTD = 0xf0; 
+	_delay_us(5);
+	key = PIND;
+	
+	//get upper nibble
+	DDRD = 0xf0;
+	PORTD = 0x0f; 
+	_delay_us(5);
+	key = key | PIND;
+	
+	//find matching keycode in keytbl
+	if (key != 0xff)
+	begin
+		for (butnum=0; butnum<MAX_KEYS; butnum++)
+		begin   
+		if (keytbl[butnum]==key)  break;   
+		end
 
-  	  if (butnum==MAX_KEYS) butnum=0;
-  	  else butnum++;	   //adjust by one to make range 1-16
-  	end  
-  	else butnum=0;
-  	 
-  	return butnum;
+		if (butnum==MAX_KEYS) butnum=0;
+		else butnum++;	   //adjust by one to make range 1-16
+	end
+	else butnum=0;
+	
+	return butnum;
 }
 
 //Debounce the button using a debounce state machine
@@ -223,121 +263,114 @@ void Debounce(void){
 	uint8_t key = ScanKeypad(); //Scan the keypad
 	switch(keyState){
 	
-    //in the RELEASED state: stay in this state if a key is not pressed
-    //go to UNKNOWN if any key is pressed and reset the debounce countdown.
-    case RELEASED:
-	  if (key){
-        keyState = UNKNOWN;
-		prevKeyState = RELEASED;
-        debounceTime = elapsedTime + DEBOUNCE_TIME;
-		checkKey = key;
-      }
-      break;
+	//in the RELEASED state: stay in this state if a key is not pressed
+	//go to UNKNOWN if any key is pressed and reset the debounce countdown.
+	case RELEASED:
+		if (key){
+			keyState = UNKNOWN;
+			prevKeyState = RELEASED;
+			debounceTime = elapsedTime + DEBOUNCE_TIME;
+			checkKey = key;
+		}
+		break;
 
-    //in the UNKNOWN state: go to released if the button is not down Update
-    //pressedAndReleased if the button was previously pressed.
-    //go to PUSHED if the button is down
-    case UNKNOWN:
-	  if (key){
-	  	if (key == checkKey){
-		  keyState = PUSHED;
-		  prevKeyState = UNKNOWN;
+	//in the UNKNOWN state: go to released if the button is not down Update
+	//pressedAndReleased if the button was previously pressed.
+	//go to PUSHED if the button is down
+	case UNKNOWN:
+		if (key){
+			if (key == checkKey){
+				keyState = PUSHED;
+				prevKeyState = UNKNOWN;
+			}
+			else {
+				debounceTime = elapsedTime + DEBOUNCE_TIME;
+				checkKey = key;
+			}
 		}
-		else {
-		  debounceTime = elapsedTime + DEBOUNCE_TIME;
-		  checkKey = key;
+		else{
+			keyState = RELEASED;
+			if (prevKeyState == PUSHED) {
+				curKey = checkKey; //The key to be checked has been pressed and debounced
+			}
+			prevKeyState = UNKNOWN;
 		}
-      }
-      else{
-	    keyState = RELEASED;
-	    if (prevKeyState == PUSHED) {
-		  curKey = checkKey; //The key to be checked has been pressed and debounced
-	    }
-		prevKeyState = UNKNOWN;
-      }
-      
-      break;
+	
+		break;
 
-    //in the PUSHED state go to UnKnown if the button is not down.
-    //stay in PUSHED if the button is down
-    case PUSHED:
-	  if (!key){
-	  	keyState = UNKNOWN;
-		prevKeyState = PUSHED;
-        debounceTime = elapsedTime + DEBOUNCE_TIME;
-      }
-	  else{
-	  	if (key != checkKey){
-		  keyState = UNKNOWN;
-		  prevKeyState = RELEASED; //...???
-		  debounceTime = elapsedTime + DEBOUNCE_TIME;
-		  curKey = checkKey;
-		  checkKey = key;
+	//in the PUSHED state go to UnKnown if the button is not down.
+	//stay in PUSHED if the button is down
+	case PUSHED:
+		if (!key){
+			keyState = UNKNOWN;
+			prevKeyState = PUSHED;
+			debounceTime = elapsedTime + DEBOUNCE_TIME;
 		}
-	  }
-      break;
-  }
+		else if (key != checkKey){
+			keyState = UNKNOWN;
+			prevKeyState = RELEASED; //...???
+			debounceTime = elapsedTime + DEBOUNCE_TIME;
+			curKey = checkKey;
+			checkKey = key;
+		}
+		break;
+	}
 }
 
 void Initialize(void) {
-  //set up the ports
-  triggerPoll = 0;
+	//set up the ports
+	triggerPoll = 0;
 
-  //init the A to D converter
-  //channel zero/ left adj /EXTERNAL Aref
-  //!!!CONNECT Aref jumper!!!!
-  //ADMUX = (1<<ADLAR);
-  //ADMUX = (1 << ADLAR) | (1 << REFS0);
-  setVref(0); //Set to 5v Vref
-  setOref(0); //Set to 100k
+	//init the A to D converter
+	setVref(0); //Set to 5v Vref
+	setOref(3); //Disable ohmref
 
-  //enable ADC and set prescaler to 1/128*16MHz=125,000
-  //and clear interupt enable
-  //and start a conversion
-  ADCSRA = (1<<ADEN) + 7;
+	//enable ADC and set prescaler to 1/128*16MHz=125,000
+	//and clear interupt enable
+	//and start a conversion
+	ADCSRA = (1<<ADEN) + 7;
 
-  // Set A to input (high impedence)
-  DDRA = 0x00;
-  
-  // PortB: LEDs, output
-  DDRB=0xff;
-  PORTB=0xff;
-  // PortD: Keypad
-  DDRD=0x00;
+	// Set A to input (high impedence)
+	DDRA = 0x00;
 
-  //set up timer 0 for 1 mSec ticks
-  TIMSK0 = 2;		//turn on timer 0 cmp match ISR
-  OCR0A = 249;  	//set the compare reg to 250 time ticks
-  TCCR0A = 0b00000010; // turn on clear-on-match
-  TCCR0B = 0b00000011;	// clock prescalar to 64
+	// PortB: LEDs, output
+	DDRB=0xff;
+	PORTB=0xff;
+	// PortD: Keypad
+	DDRD=0x00;
 
-  //set up timer 1 to interrupt on capture
-  //TIMSK1 = (1 << ICIE1); //turn on timer1 input capture ISR
-  //TCCR1A = 0b00000010;
-  //TCCR1B = (1 << ICNC1) | (1 << ICES1) | 0b00000101; // Start 
+	//set up timer 0 for 1 mSec ticks
+	TIMSK0 = 2;		//turn on timer 0 cmp match ISR
+	OCR0A = 249;	//set the compare reg to 250 time ticks
+	TCCR0A = 0b00000010; // turn on clear-on-match
+	TCCR0B = 0b00000011;	// clock prescalar to 64
 
-  // init the UART -- uart_init() is in uart.c
-  //uart_init();
-  //stdout = stdin = stderr = &uart_str;
-  //fprintf(stdout,"Starting ADC demo...\n\r");
+	//set up timer 1 to interrupt on capture
+	//TIMSK1 = (1 << ICIE1); //turn on timer1 input capture ISR
+	//TCCR1A = 0b00000010;
+	//TCCR1B = (1 << ICNC1) | (1 << ICES1) | 0b00000101; // Start 
 
-  //initialize the current key to null
-  curKey = 0;
-  elapsedTime = 30;
-  debounceTime = 30;
-  autoRange = 0;
-  mode = INIT;
-  manPage = WELCOME;
-  keyState = RELEASED;
-  rangeIdx = 0;
-  rangeIdxMod = 3;
-  frequencyRef = frequencyRanges[rangeIdx];
-  justSwitched = 0;
-  PORTB = ~0x01;
-  InitLCD();
-  PORTB = 0xFF;
-  sei();
+	// init the UART -- uart_init() is in uart.c
+	//uart_init();
+	//stdout = stdin = stderr = &uart_str;
+	//fprintf(stdout,"Starting ADC demo...\n\r");
 
+	//initialize the current key to null
+	curKey = 0;
+	elapsedTime = 30;
+	debounceTime = 30;
+	autoRange = 0;
+	mode = INIT;
+	manPage = WELCOME;
+	keyState = RELEASED;
+	rangeIdx = 0;
+	rangeIdxMod = 3;
+	frequencyRef = frequencyRanges[rangeIdx];
+	justSwitched = 0;
+	PORTB = ~0x01;
+	InitLCD();
+	PORTB = 0xFF;
+	sei();
 }
 
 uint8_t getCurKey(void){
@@ -393,7 +426,6 @@ void UpdateDMMState(void){
 				else if (!autoRange && key == 0x01){
 					rangeIdx++;
 					rangeIdx = rangeIdx % rangeIdxMod;
-					setVref(rangeIdx);
 					justSwitched = 1;
 				}
 				else if (key == 0x0B){
@@ -429,7 +461,6 @@ void UpdateDMMState(void){
 					mode = VOLTMETER;
 					rangeIdxMod = 3;
 					rangeIdx = rangeIdx % rangeIdxMod;
-					setOref(rangeIdx);
 					justSwitched = 1;
 				}
 				else if (key == 0x0C){
@@ -482,7 +513,7 @@ void UpdateManState(uint8_t key){
 				justSwitched = 1;
 			}
 			break;
-	    case NAVIGATION_1:
+		case NAVIGATION_1:
 			if (key == 0x10){
 				mode = returnMode;
 				manPage = WELCOME;
@@ -630,6 +661,11 @@ void setVref(uint8_t idx) {
 }
 
 void setOref(uint8_t idx) {
+	// Don't use Oref
+	if(idx < 0 || idx > 2) {
+		DDRA = 0x00;
+		return;
+	}
 	switch(idx) {
 		case 0:
 			DDRA = (1 << 7); //100k resistor output
@@ -645,6 +681,75 @@ void setOref(uint8_t idx) {
 	PORTA = DDRA;
 }
 
+// Set rangeIdx if autoRange
+void Autorange(void){
+	if(autoRange) {
+		switch (mode){
+			case VOLTMETER:
+				switch (rangeIdx){
+					//In the 5 Volt range, move to a smaller scale if the voltage is less than 0.525 of Vref
+					case 0:
+						if (Ain < 128){
+							rangeIdx++;
+						}
+						break;
+					//In the 2.56 Volt range, move to a smaller scale if the voltage is less than 0.4 of Vref
+					//or move to a larger scale if the voltage is close to Vref
+					case 1:
+						if (Ain < 100){
+							rangeIdx++;
+						}
+						else if (Ain > 250){
+							rangeIdx--;
+						}
+						break;
+					//In the 1.1 Volt range, move to a larger scale if the voltage is close to Vref
+					case 2:
+						if (Ain > 250){
+							rangeIdx--;
+						}
+						break;
+				}
+				setOref(3); // disable ohmref
+				setVref(rangeIdx);
+				break;
+
+			case OHMMETER:
+				switch (rangeIdx){
+					//In the 100kOhm range, move to a smaller scale if the resistance is less than 0.4 of Vcc 
+					//(R_test is less than 10% of R) 
+					case 0:
+						if (Ain < 100){
+							rangeIdx++;
+						}
+						break;
+				
+					//In the 10kOhm range, move to a smaller scale if the reading is less than 0.4 of Vcc
+					//(R_test is less than 10% of R). Move to a larger sclae if the reading is almost Vcc
+					//(R_test is almost 95% of R).
+					case 1:
+						if (Ain < 100){
+								rangeIdx++;
+						}
+						else if (Ain > 250){
+							rangeIdx--;
+						}
+						break;
+	
+					//In the 10kOhm range, move to a larger scale if the reading is almost Vcc 
+					//(R_test is almost 95% of R).
+					case 2:
+						if (Ain > 250){
+							rangeIdx--;
+						}
+					break;
+				}
+				setOref(rangeIdx);
+				break;
+		}
+	}
+}
+
 //END HELPER FUNCTIONS*********************************************************
 
 int main(void){
@@ -657,64 +762,65 @@ int main(void){
 		}
 		if(triggerPoll) {
 			poll();
+			Autorange();
 			triggerPoll = 0;
-    	}
-	    if (justSwitched){
+		}
+		if (justSwitched){
 			switch (mode){
 				case MAN:
-		  			switch (manPage){
-					  	case WELCOME:
+					switch (manPage){
+						case WELCOME:
 							LCDclr();
-					  		CopyStringtoLCD(LCDManWelcomeTop, 0, 0);
-					  		CopyStringtoLCD(LCDManWelcomeBot, 0, 1);
+							CopyStringtoLCD(LCDManWelcomeTop, 0, 0);
+							CopyStringtoLCD(LCDManWelcomeBot, 0, 1);
 							break;
-					    case NAVIGATION_1:
+						case NAVIGATION_1:
 							LCDclr();
-					  		CopyStringtoLCD(LCDNavigation1Top, 0, 0);
+							CopyStringtoLCD(LCDNavigation1Top, 0, 0);
 					 		CopyStringtoLCD(LCDNavigation1Bot, 0, 1);
 							break;
 						case NAVIGATION_2:
 							LCDclr();
-					  		CopyStringtoLCD(LCDNavigation2Top, 0, 0);
-					  		CopyStringtoLCD(LCDNavigation2Bot, 0, 1);
+							CopyStringtoLCD(LCDNavigation2Top, 0, 0);
+							CopyStringtoLCD(LCDNavigation2Bot, 0, 1);
 							break;
 					 	case VOLT_MAN:
 							LCDclr();
-					  		CopyStringtoLCD(LCDVoltManTop, 0, 0);
-					  		CopyStringtoLCD(LCDVoltManBot, 0, 1);
+							CopyStringtoLCD(LCDVoltManTop, 0, 0);
+							CopyStringtoLCD(LCDVoltManBot, 0, 1);
 							break;
 						case OHM_MAN:
 							LCDclr();
-					  		CopyStringtoLCD(LCDOhmManTop, 0, 0);
-					  		CopyStringtoLCD(LCDOhmManBot, 0, 1);
+							CopyStringtoLCD(LCDOhmManTop, 0, 0);
+							CopyStringtoLCD(LCDOhmManBot, 0, 1);
 							break;
 						case FREQ_MAN:
 							LCDclr();
-					  		CopyStringtoLCD(LCDFreqManTop, 0, 0);
-					  		CopyStringtoLCD(LCDFreqManBot, 0, 1);
+							CopyStringtoLCD(LCDFreqManTop, 0, 0);
+							CopyStringtoLCD(LCDFreqManBot, 0, 1);
 							break;
 						case AUTORANGE_MAN_1:
 							LCDclr();
-					  		CopyStringtoLCD(LCDAutorangeMan1Top, 0, 0);
-					  		CopyStringtoLCD(LCDAutorangeMan1Bot, 0, 1);
+							CopyStringtoLCD(LCDAutorangeMan1Top, 0, 0);
+							CopyStringtoLCD(LCDAutorangeMan1Bot, 0, 1);
 							break;
 						case AUTORANGE_MAN_2:
 							LCDclr();
-					  		CopyStringtoLCD(LCDAutorangeMan2Top, 0, 0);
-					  		CopyStringtoLCD(LCDAutorangeMan2Bot, 0, 1);
+							CopyStringtoLCD(LCDAutorangeMan2Top, 0, 0);
+							CopyStringtoLCD(LCDAutorangeMan2Bot, 0, 1);
 							break;
 					}
-			    		break;
+						break;
 
 				case VOLTMETER:
-			    	LCDclr();
+					LCDclr();
 				 	CopyStringtoLCD(LCDMode, 0, 0);
 					CopyStringtoLCD(LCDVolt, MODE_START, 0);
 					if (autoRange){
-				  		CopyStringtoLCD(LCDAutorangeOn, 0, 1);
-				  	}
-				  	else{
-				  		CopyStringtoLCD(LCDRange, 0, 1);
+						CopyStringtoLCD(LCDAutorangeOn, 0, 1);
+					}
+					else{
+						CopyStringtoLCD(LCDRange, 0, 1);
 						switch (rangeIdx){
 							case 0:
 								CopyStringtoLCD(LCD5Volts, RANGE_START, 1);
@@ -726,18 +832,19 @@ int main(void){
 								CopyStringtoLCD(LCD11Volts, RANGE_START, 1);
 								break;
 						}
-				  	}	
-			    	break;
+						setVref(rangeIdx);
+					}	
+					break;
 
-			  	case OHMMETER:
-			    	LCDclr();
-				  	CopyStringtoLCD(LCDMode, 0, 0);
-				  	CopyStringtoLCD(LCDOhm, MODE_START, 0);
-				  	if (autoRange){
-				    	CopyStringtoLCD(LCDAutorangeOn, 0, 1);
-				  	}
-				  	else{
-				  		CopyStringtoLCD(LCDRange, 0, 1);
+				case OHMMETER:
+					LCDclr();
+					CopyStringtoLCD(LCDMode, 0, 0);
+					CopyStringtoLCD(LCDOhm, MODE_START, 0);
+					if (autoRange){
+						CopyStringtoLCD(LCDAutorangeOn, 0, 1);
+					}
+					else{
+						CopyStringtoLCD(LCDRange, 0, 1);
 						switch (rangeIdx){
 							case 0:
 								CopyStringtoLCD(LCD100kOhm, RANGE_START, 1);
@@ -749,18 +856,20 @@ int main(void){
 								CopyStringtoLCD(LCD1kOhm, RANGE_START, 1);
 								break;
 						}
-				  	}
-			    	break;
+						setVref(0); // 5v reference
+						setOref(rangeIdx);
+					}
+					break;
 
-			  	case FREQMETER:
-			  		LCDclr();
-				  	CopyStringtoLCD(LCDMode, 0, 0);
-				  	CopyStringtoLCD(LCDFreq, MODE_START, 0);
-				  	if (autoRange){
-				    	CopyStringtoLCD(LCDAutorangeOn, 0, 1);
-				  	}
-				  	else{
-				  		CopyStringtoLCD(LCDRange, 0, 1);
+				case FREQMETER:
+					LCDclr();
+					CopyStringtoLCD(LCDMode, 0, 0);
+					CopyStringtoLCD(LCDFreq, MODE_START, 0);
+					if (autoRange){
+						CopyStringtoLCD(LCDAutorangeOn, 0, 1);
+					}
+					else{
+						CopyStringtoLCD(LCDRange, 0, 1);
 						switch (rangeIdx){
 							case 0:
 								CopyStringtoLCD(LCD10kHz, RANGE_START, 1);
@@ -769,28 +878,11 @@ int main(void){
 								CopyStringtoLCD(LCD1kHz, RANGE_START, 1);
 								break;
 						}
-				  	}
-				    break;
+					}
+					break;
 			}
 
 			justSwitched = 0;
-		}
-		else{
-			switch (mode){
-				case VOLTMETER:
-					LCDGotoXY(0, 0);
-  					LCDstring(LCDBuffer, strlen(LCDBuffer));
-					break;
-
-				case OHMMETER:
-					LCDGotoXY(0, 0);
-					LCDstring(LCDBuffer, strlen(LCDBuffer));
-					break;
-				case FREQMETER:
-					LCDGotoXY(0, 0);
-				  	LCDstring(LCDBuffer, strlen(LCDBuffer));
-					break;
-			}
 		}
 	}
 
