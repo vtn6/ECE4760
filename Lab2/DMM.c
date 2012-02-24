@@ -80,7 +80,7 @@ const uint8_t LCDAutorangeMan1Top[] PROGMEM = "D TO TOGGLE\0";
 const uint8_t LCDAutorangeMan1Bot[] PROGMEM = "AUTORANGE\0";
 const uint8_t LCDAutorangeMan2Top[] PROGMEM = "1 TO SWITCH\0";
 const uint8_t LCDAutorangeMan2Bot[] PROGMEM = "AUTORANGE VALUE\0";
-const float VrefRanges[3] = {5.0, 2.56, 1.1};
+const float VrefRanges[3] = {4.955, 2.56, 1.1};
 const uint8_t resistorRanges[3] = {100, 10, 1};
 const uint8_t frequencyRanges[2] = {10, 1};
 const uint8_t TIMERAprescalars[2] = {0x01, 0x02}; //TODO: Implement
@@ -92,7 +92,8 @@ volatile uint8_t keyState;		//current state for Debounce State Machine
 volatile uint8_t checkKey;		//key that might be pressed
 volatile uint8_t prevKeyState;	//previous state for Debounce State Machine
 volatile uint16_t elapsedTime;	//total time the program has been running
-volatile uint16_t debounceTime;	//the time at which the program should debounce
+volatile uint8_t debounceTime;	//the time at which the program should debounce
+volatile uint8_t debouncing;	//flag for whether or not to scan the ketypad
 volatile uint8_t mode;			//current mode of the DMM
 volatile uint8_t returnMode;	//mode to return to after exiting the manual
 volatile uint8_t manPage;		//current page in the manual
@@ -148,42 +149,28 @@ void Autorange(void);
 //timer 0 compare ISR
 //Executes every 1ms
 ISR (TIMER0_COMPA_vect){
-
+	elapsedTime++;
 	//Check to see if we are currently debouncing a signal
 	//if the signal isn't being debounced, checK if the button has been pressed
 	//if we are waiting for it to be pressed or checK if it is not pressed if we are waiting for
 	//the release event
-	
-	//check for overflow. If the elapsedTime overflows, reset debounceTime
-	//as well
-	
-	uint8_t debounceFlag1 = 1;
-	uint8_t debounceFlag2 = 0;
-	if (elapsedTime >= debounceTime && debounceTime < DEBOUNCE_TIME){
-		debounceFlag1 = 0;
-	}
-	
-	//check if we are waiting to debounce. If we are, then take precautions
-	//so that there are no overflow errors
-	if (0xff - debounceTime < DEBOUNCE_TIME){
-		uint8_t diff = 0xff - debounceTime;
-		if (elapsedTime >= DEBOUNCE_TIME - diff){
-			debounceFlag2 = 1;
-		}
-	}
 
-	elapsedTime++;
-	if ((elapsedTime >= debounceTime && debounceFlag1) || (elapsedTime < debounceTime && debounceFlag2)){
+	if (!debouncing){
 		Debounce();
 		UpdateDMMState();
 	}
-
-	if((elapsedTime % 200) == 0 && mode != INIT && mode != MAN) {
-		triggerPoll = 1;
+	else if (debouncing && !--debounceTime){
+		Debounce();
+		UpdateDMMState();
 	}
-	if(elapsedTime % 200 == 190) {
-		//start another conversion
-		ADCSRA |= (1<<ADSC);
+	if(mode == VOLTMETER || mode == OHMMETER) {
+		if(elapsedTime % 200 == 0) {
+			triggerPoll = 1;
+		}
+		if(elapsedTime % 200 == 190) {
+			//start another conversion
+			ADCSRA |= (1<<ADSC);
+		}
 	}
 }
 
@@ -223,14 +210,6 @@ ISR (TIMER1_OVF_vect){
 }
 
 //END TIMER INTERRUPTS*********************************************************
-
-//ADC INTERRUPTS***************************************************************
-/*
-ISR (ADC_vect) {
-	Ain = ADCH; 
-}
-*/
-//END ADC INTERRUPTS***********************************************************
 
 //HELPER FUNCTIONS*************************************************************
 uint8_t ScanKeypad(void){
@@ -275,7 +254,8 @@ void Debounce(void){
 		if (key){
 			keyState = UNKNOWN;
 			prevKeyState = RELEASED;
-			debounceTime = elapsedTime + DEBOUNCE_TIME;
+			debouncing = 1;
+			debounceTime = DEBOUNCE_TIME;
 			checkKey = key;
 		}
 		break;
@@ -288,9 +268,11 @@ void Debounce(void){
 			if (key == checkKey){
 				keyState = PUSHED;
 				prevKeyState = UNKNOWN;
+				debouncing = 0;
 			}
 			else {
-				debounceTime = elapsedTime + DEBOUNCE_TIME;
+				debouncing = 1;
+				debounceTime = DEBOUNCE_TIME;
 				checkKey = key;
 			}
 		}
@@ -300,6 +282,7 @@ void Debounce(void){
 				curKey = checkKey; //The key to be checked has been pressed and debounced
 			}
 			prevKeyState = UNKNOWN;
+			debouncing = 0;
 		}
 	
 		break;
@@ -310,12 +293,14 @@ void Debounce(void){
 		if (!key){
 			keyState = UNKNOWN;
 			prevKeyState = PUSHED;
-			debounceTime = elapsedTime + DEBOUNCE_TIME;
+			debouncing = 1;
+			debounceTime = DEBOUNCE_TIME;
 		}
 		else if (key != checkKey){
 			keyState = UNKNOWN;
 			prevKeyState = RELEASED; //...???
-			debounceTime = elapsedTime + DEBOUNCE_TIME;
+			debouncing = 1;
+			debounceTime = DEBOUNCE_TIME;
 			curKey = checkKey;
 			checkKey = key;
 		}
@@ -365,7 +350,7 @@ void Initialize(void) {
 	curKey = 0;
 	elapsedTime = 30;
 	debounceTime = 30;
-	autoRange = 0;
+	autoRange = 1;
 	mode = INIT;
 	manPage = WELCOME;
 	keyState = RELEASED;
@@ -410,8 +395,22 @@ void UpdateDMMState(void){
 					justSwitched = 1;
 				}
 				else {
-					mode = VOLTMETER;
-					justSwitched = 1;
+					if (key == 0x0A){
+						mode = VOLTMETER;
+						justSwitched = 1;
+					}
+					else if (key == 0x0B){
+						mode = OHMMETER;
+						rangeIdxMod = 3;
+						rangeIdx = rangeIdx % rangeIdxMod;
+						justSwitched = 1;
+					}
+					else if (key == 0x0C){
+						mode = FREQMETER;
+						rangeIdxMod = 2;
+						rangeIdx = rangeIdx % rangeIdxMod;
+						justSwitched = 1;
+					}
 				}
 				break; 
 
