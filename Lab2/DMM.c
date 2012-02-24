@@ -178,12 +178,17 @@ ISR (TIMER0_COMPA_vect){
 		UpdateDMMState();
 	}
 
-	if((elapsedTime % 200) == 0) {
+	if((elapsedTime % 200) == 0 && mode != INIT && mode != MAN) {
 		triggerPoll = 1;
+	}
+	if(elapsedTime % 200 == 190) {
+		//start another conversion
+		ADCSRA |= (1<<ADSC);
 	}
 }
 
 ISR (TIMER1_CAPT_vect){
+	/*
 	//read the timer1 capture register
 	T1Capture = ICR1;
 	
@@ -191,7 +196,7 @@ ISR (TIMER1_CAPT_vect){
 	period = T1Capture - lastT1Capture;
 	lastT1Capture = T1Capture;
 
-	//if the period is too small, change the prescalar
+	//if the clovk is running too slow, change the prescalar
 	if (period < 100){
 		rangeIdx--;
 		rangeIdx = rangeIdx % rangeIdxMod;
@@ -200,12 +205,13 @@ ISR (TIMER1_CAPT_vect){
 		//Set up the TIMERA prescalar
 		TCCR1B &= ~0x07;
 		TCCR1B |= TIMERAprescalars[rangeIdx];
-		justSwitched = 1;
 	}
+	*/
 }
 
 ISR (TIMER1_OVF_vect){
 	//the clock is running too fast, slow down the frequency
+	/*
 	rangeIdx++;
 	rangeIdx = rangeIdx % rangeIdxMod;
 	frequencyRef = frequencyRanges[rangeIdx];
@@ -213,7 +219,7 @@ ISR (TIMER1_OVF_vect){
 	//Set up the TIMERA prescalar
 	TCCR1B &= ~0x07;
 	TCCR1B |= TIMERAprescalars[rangeIdx];
-	justSwitched = 1;	
+	*/
 }
 
 //END TIMER INTERRUPTS*********************************************************
@@ -625,8 +631,6 @@ void UpdateManState(uint8_t key){
 void poll(void) {
 	//get the sample
 	Ain = ADCH;
-	//start another conversion
-	ADCSRA |= (1<<ADSC);
 	voltage = (float)Ain;
 	voltage = (voltage/256.0) * Vref;
 	ohm = (ohmRef * voltage)/(Vref - voltage);
@@ -689,23 +693,23 @@ void Autorange(void){
 				switch (rangeIdx){
 					//In the 5 Volt range, move to a smaller scale if the voltage is less than 0.525 of Vref
 					case 0:
-						if (Ain < 128){
+						if (voltage <= 2.0){
 							rangeIdx++;
 						}
 						break;
 					//In the 2.56 Volt range, move to a smaller scale if the voltage is less than 0.4 of Vref
 					//or move to a larger scale if the voltage is close to Vref
 					case 1:
-						if (Ain < 100){
+						if (voltage < 0.9){
 							rangeIdx++;
 						}
-						else if (Ain > 250){
+						else if (voltage > 2.0){
 							rangeIdx--;
 						}
 						break;
 					//In the 1.1 Volt range, move to a larger scale if the voltage is close to Vref
 					case 2:
-						if (Ain > 250){
+						if (voltage > 0.9){
 							rangeIdx--;
 						}
 						break;
@@ -719,7 +723,7 @@ void Autorange(void){
 					//In the 100kOhm range, move to a smaller scale if the resistance is less than 0.4 of Vcc 
 					//(R_test is less than 10% of R) 
 					case 0:
-						if (Ain < 100){
+						if (ohm <= 10.5){
 							rangeIdx++;
 						}
 						break;
@@ -728,10 +732,10 @@ void Autorange(void){
 					//(R_test is less than 10% of R). Move to a larger sclae if the reading is almost Vcc
 					//(R_test is almost 95% of R).
 					case 1:
-						if (Ain < 100){
-								rangeIdx++;
+						if (ohm <= 3.3){
+							rangeIdx++;
 						}
-						else if (Ain > 250){
+						else if (ohm > 10.5){
 							rangeIdx--;
 						}
 						break;
@@ -739,7 +743,7 @@ void Autorange(void){
 					//In the 10kOhm range, move to a larger scale if the reading is almost Vcc 
 					//(R_test is almost 95% of R).
 					case 2:
-						if (Ain > 250){
+						if (ohm > 3.3){
 							rangeIdx--;
 						}
 					break;
@@ -766,6 +770,7 @@ int main(void){
 			triggerPoll = 0;
 		}
 		if (justSwitched){
+			justSwitched = 0;
 			switch (mode){
 				case MAN:
 					switch (manPage){
@@ -887,8 +892,6 @@ int main(void){
 					}
 					break;
 			}
-
-			justSwitched = 0;
 		}
 	}
 
