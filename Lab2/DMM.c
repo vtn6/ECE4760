@@ -106,9 +106,9 @@ volatile char Ain;//, AinLow;	//The voltage to measure
 volatile float Vref;			//The reference voltage
 volatile uint8_t ohmRef;			//The reference resistor
 volatile uint8_t frequencyRef;	//The reference freuqnecy
-volatile uint8_t T1Capture;		//Used for determining frequency
-volatile uint8_t lastT1Capture;	//Used for determining frequency
-volatile uint8_t period;		//Period of the waveform measured
+volatile uint16_t T1Capture;		//Used for determining frequency
+volatile uint16_t lastT1Capture;	//Used for determining frequency
+volatile uint16_t period;		//Period of the waveform measured
 //END VOLATILE VARIABLES*******************************************************
 
 //UART STUFF*******************************************************************
@@ -125,10 +125,11 @@ unsigned char keytbl[MAX_KEYS]={0xee, 0xed, 0xeb,
 								0x77, 0x7e, 0x7b, 0x7d};
 
 //uint8_t Ain; 		//raw A to D number
-uint8_t LCDBuffer[6];  // LCD display buffer
+uint8_t LCDBuffer[16];  // LCD display buffer
 float voltage;
 float ohm;
-char v_string[4];
+uint16_t frequency;
+char v_string[16];
 //END VARIABLES****************************************************************
 
 //DECLARE FUNCTION SIGNATURES**************************************************
@@ -138,7 +139,8 @@ void Debounce(void);
 void InitLCD(void);
 void UpdateDMMState(void);
 void UpdateManState(uint8_t);
-void Poll(void);
+void poll(void);
+void pollFreq(void);
 void setVref(uint8_t);
 void setOref(uint8_t);
 void Autorange(void);
@@ -163,11 +165,11 @@ ISR (TIMER0_COMPA_vect){
 		Debounce();
 		UpdateDMMState();
 	}
-	if(mode == VOLTMETER || mode == OHMMETER) {
+	if(mode != INIT && mode != MAN) {
 		if(elapsedTime % 200 == 0) {
 			triggerPoll = 1;
 		}
-		if(elapsedTime % 200 == 190) {
+		if(elapsedTime % 200 == 190 && mode != FREQMETER) {
 			//start another conversion
 			ADCSRA |= (1<<ADSC);
 		}
@@ -175,7 +177,6 @@ ISR (TIMER0_COMPA_vect){
 }
 
 ISR (TIMER1_CAPT_vect){
-	/*
 	//read the timer1 capture register
 	T1Capture = ICR1;
 	
@@ -183,29 +184,17 @@ ISR (TIMER1_CAPT_vect){
 	period = T1Capture - lastT1Capture;
 	lastT1Capture = T1Capture;
 
-	//if the clovk is running too slow, change the prescalar
+	//if the clock is running too slow, change the prescalar
+	/*
 	if (period < 100){
 		rangeIdx--;
 		rangeIdx = rangeIdx % rangeIdxMod;
 		frequencyRef = frequencyRanges[rangeIdx];
 		
 		//Set up the TIMERA prescalar
-		TCCR1B &= ~0x07;
-		TCCR1B |= TIMERAprescalars[rangeIdx];
+		//TCCR1B &= ~0x07;
+		//TCCR1B |= TIMERAprescalars[rangeIdx];
 	}
-	*/
-}
-
-ISR (TIMER1_OVF_vect){
-	//the clock is running too fast, slow down the frequency
-	/*
-	rangeIdx++;
-	rangeIdx = rangeIdx % rangeIdxMod;
-	frequencyRef = frequencyRanges[rangeIdx];
-	
-	//Set up the TIMERA prescalar
-	TCCR1B &= ~0x07;
-	TCCR1B |= TIMERAprescalars[rangeIdx];
 	*/
 }
 
@@ -215,7 +204,7 @@ ISR (TIMER1_OVF_vect){
 uint8_t ScanKeypad(void){
 	uint8_t key;
 	uint8_t butnum;
-//get lower nibble
+	//get lower nibble
 	DDRD = 0x0f;
 	PORTD = 0xf0; 
 	_delay_us(5);
@@ -324,9 +313,10 @@ void Initialize(void) {
 	// Set A to input (high impedence)
 	DDRA = 0x00;
 
-	// PortB: LEDs, output
-	DDRB=0xff;
-	PORTB=0xff;
+	// PortB
+	DDRB=0x00;
+	//PORTB=0xff;
+
 	// PortD: Keypad
 	DDRD=0x00;
 
@@ -337,30 +327,34 @@ void Initialize(void) {
 	TCCR0B = 0b00000011;	// clock prescalar to 64
 
 	//set up timer 1 to interrupt on capture
-	TIMSK1 = (1 << ICIE1); //turn on timer1 input capture ISR
-	TCCR1A = 0b00000010;
-	TCCR1B = (1 << ICNC1) | (1 << ICES1) | 0b00000001; // Start 
+	//TIMSK1 = (1 << ICIE1); //turn on timer1 input capture ISR
+	TCCR1B = (1 << ICES1) + 2; // Start 
 
-	// init the UART -- uart_init() is in uart.c
-	//uart_init();
-	//stdout = stdin = stderr = &uart_str;
-	//fprintf(stdout,"Starting ADC demo...\n\r");
+	// Set analog comp to connect to timer capture input 
+	// and turn on the band gap reference on the positive input  
+	ACSR =  (1<<ACIC) ; //0b01000100  ;
+
 
 	//initialize the current key to null
 	curKey = 0;
-	elapsedTime = 30;
-	debounceTime = 30;
+	elapsedTime = 0;
+	debounceTime = 0;
+
 	autoRange = 1;
 	mode = INIT;
 	manPage = WELCOME;
 	keyState = RELEASED;
+
+	T1Capture = 0;
+	lastT1Capture = 0;
+
 	rangeIdx = 0;
 	rangeIdxMod = 3;
-	frequencyRef = frequencyRanges[rangeIdx];
+
 	justSwitched = 0;
-	PORTB = ~0x01;
+
 	InitLCD();
-	PORTB = 0xFF;
+
 	sei();
 }
 
@@ -389,7 +383,6 @@ void UpdateDMMState(void){
 		switch (mode){
 			case INIT:
 				if (key == 0x0F){
-					PORTB = ~0x20;
 					returnMode = VOLTMETER;
 					mode = MAN;
 					justSwitched = 1;
@@ -489,7 +482,6 @@ void UpdateDMMState(void){
 				else if (!autoRange && key == 0x01){
 					rangeIdx++;
 					rangeIdx = rangeIdx % rangeIdxMod;
-					frequencyRef = frequencyRanges[rangeIdx];
 					justSwitched = 1;
 				}
 				else if (key == 0x0A){
@@ -635,15 +627,27 @@ void poll(void) {
 	ohm = (ohmRef * voltage)/(Vref - voltage);
 	switch(mode) {
 		case VOLTMETER:
-			dtostrf(voltage, 4, 2, v_string);
+			dtostrf(voltage, 6, 3, v_string);
+			sprintf(LCDBuffer, "%s V",v_string);
 			break;
 		case OHMMETER:
-			dtostrf(ohm, 4, 2, v_string);
+			dtostrf(ohm, 6, 3, v_string);
+			sprintf(LCDBuffer, "%s kOhm",v_string);
 			break;
 	}
-	sprintf(LCDBuffer, "%s",v_string);
+	
 
-	CopyStringtoLCD(LCDBlank, 0, 0);
+	//CopyStringtoLCD(LCDBlank, 0, 0);
+	LCDGotoXY(0, 0);
+	LCDstring(LCDBuffer, strlen(LCDBuffer));
+}
+
+void pollFreq(void) {
+	frequency = 2000000 / (period);
+	dtostrf(frequency, 5, 0, v_string);
+	sprintf(LCDBuffer, "%s Hz",v_string);
+
+	//CopyStringtoLCD(LCDBlank, 0, 0);
 	LCDGotoXY(0, 0);
 	LCDstring(LCDBuffer, strlen(LCDBuffer));
 }
@@ -759,19 +763,20 @@ int main(void){
 	Initialize();
 	
 	while(1){
-	uint8_t key = curKey;
-		if (key){
-			PORTB = ~key;
-		}
 		if(triggerPoll) {
-			poll();
-			Autorange();
+			if(mode == FREQMETER) {
+				pollFreq();
+			} else {
+				poll();
+				Autorange();
+			}
 			triggerPoll = 0;
 		}
 		if (justSwitched){
 			justSwitched = 0;
 			switch (mode){
 				case MAN:
+					TIMSK1 = 0; //turn off timer1 input capture ISR
 					switch (manPage){
 						case WELCOME:
 							LCDclr();
@@ -819,7 +824,8 @@ int main(void){
 				case VOLTMETER:
 					LCDclr();
 				 	CopyStringtoLCD(LCDMode, 0, 0);
-					CopyStringtoLCD(LCDVolt, MODE_START, 0);
+					//CopyStringtoLCD(LCDVolt, MODE_START, 0);
+					TIMSK1 = 0; //turn off timer1 input capture ISR
 					setOref(3); // disable ohmmeter
 					if (autoRange){
 						CopyStringtoLCD(LCDAutorangeOn, 0, 1);
@@ -844,7 +850,8 @@ int main(void){
 				case OHMMETER:
 					LCDclr();
 					CopyStringtoLCD(LCDMode, 0, 0);
-					CopyStringtoLCD(LCDOhm, MODE_START, 0);
+					//CopyStringtoLCD(LCDOhm, MODE_START, 0);
+					TIMSK1 = 0; //turn off timer1 input capture ISR
 					setVref(0); // 5v reference
 					if (autoRange){
 						CopyStringtoLCD(LCDAutorangeOn, 0, 1);
@@ -869,11 +876,13 @@ int main(void){
 				case FREQMETER:
 					LCDclr();
 					CopyStringtoLCD(LCDMode, 0, 0);
-					CopyStringtoLCD(LCDFreq, MODE_START, 0);
+					//CopyStringtoLCD(LCDFreq, MODE_START, 0);
+
+					setVref(0);
+					setOref(3);
 
 					//Set the prescalar on TIMER1 to the appropriate range
- 					TCCR1B &= ~0x07;
- 					TCCR1B |= TIMERAprescalars[rangeIdx];
+					TIMSK1 = (1 << ICIE1); //turn on timer1 input capture ISR
 
 					if (autoRange){
 						CopyStringtoLCD(LCDAutorangeOn, 0, 1);
