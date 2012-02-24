@@ -47,6 +47,7 @@
 //END STATES FOR THE MANUAL****************************************************
 
 //DEFINE LCD STRINGS***********************************************************
+const uint8_t LCDBlank[] PROGMEM = "                \0"; // Blank message
 const uint8_t LCDHelloTop[] PROGMEM = "DMM MASTER v9001\0"; // Welcome Message
 const uint8_t LCDHelloBot[] PROGMEM = "PRESS # FOR HELP\0";
 const uint8_t LCDRange[] PROGMEM = "RANGE: \0";
@@ -99,7 +100,7 @@ volatile uint8_t justSwitched;	//did the DMM just switch states
 volatile uint8_t rangeIdx;		//which range is currently selected (not AR)
 volatile uint8_t rangeIdxMod;	//limits rangeIdx to 2 or 3
 volatile uint8_t triggerPoll;   // set to true to poll the inputs
-volatile uint8_t Ain;//, AinLow; //The voltage to measure
+volatile char Ain;//, AinLow; //The voltage to measure
 volatile float Vref;			//The reference voltage
 volatile uint8_t ohmRef;			//The reference resistor
 volatile uint8_t frequencyRef;	//The reference freuqnecy
@@ -121,6 +122,8 @@ unsigned char keytbl[MAX_KEYS]={0xee, 0xed, 0xeb,
 //uint8_t Ain; 		//raw A to D number
 uint8_t LCDBuffer[6];  // LCD display buffer
 float voltage;
+float ohm;
+char v_string[4];
 //END VARIABLES****************************************************************
 
 //DECLARE FUNCTION SIGNATURES**************************************************
@@ -168,7 +171,7 @@ ISR (TIMER0_COMPA_vect){
 		UpdateDMMState();
 	}
 
-	if((elapsedTime % 100) == 0) {
+	if((elapsedTime % 200) == 0) {
     	triggerPoll = 1;
   	}
 }
@@ -284,21 +287,17 @@ void Initialize(void) {
   //channel zero/ left adj /EXTERNAL Aref
   //!!!CONNECT Aref jumper!!!!
   //ADMUX = (1<<ADLAR);
+  //ADMUX = (1 << ADLAR) | (1 << REFS0);
+  setVref(0); //Set to 5v Vref
+  setOref(0); //Set to 100k
 
   //enable ADC and set prescaler to 1/128*16MHz=125,000
   //and clear interupt enable
   //and start a conversion
-  //ADCSRA = (1<<ADEN) | (1<<ADSC) + 7;
+  ADCSRA = (1<<ADEN) + 7;
 
   // Set A to input (high impedence)
-  // Set E as output
-  // Set D as input
-  DDRA = 0xff;
-  // Set to an input to send high
-  PORTA = 0xff;
-
-  //DDRE = 0xff;
-  //PORTE = 0;
+  DDRA = 0x00;
   
   // PortB: LEDs, output
   DDRB=0xff;
@@ -332,8 +331,6 @@ void Initialize(void) {
   keyState = RELEASED;
   rangeIdx = 0;
   rangeIdxMod = 3;
-  Vref = VrefRanges[rangeIdx];
-  ohmRef = resistorRanges[rangeIdx];
   frequencyRef = frequencyRanges[rangeIdx];
   justSwitched = 0;
   PORTB = ~0x01;
@@ -396,7 +393,7 @@ void UpdateDMMState(void){
 				else if (!autoRange && key == 0x01){
 					rangeIdx++;
 					rangeIdx = rangeIdx % rangeIdxMod;
-					Vref = VrefRanges[rangeIdx];
+					setVref(rangeIdx);
 					justSwitched = 1;
 				}
 				else if (key == 0x0B){
@@ -432,7 +429,7 @@ void UpdateDMMState(void){
 					mode = VOLTMETER;
 					rangeIdxMod = 3;
 					rangeIdx = rangeIdx % rangeIdxMod;
-					ohmRef = resistorRanges[rangeIdx];
+					setOref(rangeIdx);
 					justSwitched = 1;
 				}
 				else if (key == 0x0C){
@@ -595,24 +592,57 @@ void UpdateManState(uint8_t key){
 }
 
 void poll(void) {
-  //get the sample
-  Ain = ADCH;
-  //start another conversion
-  ADCSRA |= (1<<ADSC);
-  //results to hyperterm
-  //printf("%d\n\r",Ain);
-  //results to LCD
-  LCDclr();
-  sprintf(LCDBuffer, "%d", Ain);
-  LCDGotoXY(0, 0);
-  LCDstring(LCDBuffer, strlen(LCDBuffer));
-  //fancy stuff
-  //voltage = (float)Ain;
-  //voltage = (voltage/1024.0)*Vref;
-  //dtostrf(voltage, 6, 3, v_string);
-  //("%s",v_string);
-  //finished polling
-  triggerPoll = 0;
+	//get the sample
+	Ain = ADCH;
+	//start another conversion
+	ADCSRA |= (1<<ADSC);
+	voltage = (float)Ain;
+	voltage = (voltage/256.0) * Vref;
+	ohm = (ohmRef * voltage)/(Vref - voltage);
+	switch(mode) {
+		case VOLTMETER:
+			dtostrf(voltage, 4, 2, v_string);
+			break;
+		case OHMMETER:
+			dtostrf(ohm, 4, 2, v_string);
+			break;
+	}
+	sprintf(LCDBuffer, "%s",v_string);
+
+	CopyStringtoLCD(LCDBlank, 0, 0);
+	LCDGotoXY(0, 0);
+	LCDstring(LCDBuffer, strlen(LCDBuffer));
+}
+
+void setVref(uint8_t idx) {
+	switch(idx) {
+		case 0:
+			ADMUX = (1 << ADLAR) | (1 << REFS0); //5v
+			break;
+		case 1:
+			ADMUX = (1 << ADLAR) | (3 << REFS0); //2.56v
+			break;
+		case 2:
+			ADMUX = (1 << ADLAR) | (2 << REFS0); //1.1v
+			break;
+	}
+	Vref = VrefRanges[idx];
+}
+
+void setOref(uint8_t idx) {
+	switch(idx) {
+		case 0:
+			DDRA = (1 << 7); //100k resistor output
+			break;
+		case 1:
+			DDRA = (1 << 6); //10k resistor output
+			break;
+		case 2:
+			DDRA = (1 << 5); //1k resistor output
+			break;
+	}
+	ohmRef = resistorRanges[idx];
+	PORTA = DDRA;
 }
 
 //END HELPER FUNCTIONS*********************************************************
@@ -626,21 +656,7 @@ int main(void){
 			PORTB = ~key;
 		}
 		if(triggerPoll) {
-			//print the previous result then start a new conversion
-			/*
-     		ADCSRA |= (1<<ADSC);
-			triggerPoll = 0;
-			voltage = (float)Ain ;
-      		voltage = (voltage/255.0)*Vref ; //(fraction of full scale)*Vref
-			dtostrf(voltage, 6, 3, LCDBuffer);
-			*/
-			Ain = ADCH;
-	 		//start another conversion
-	 		ADCSRA |= (1<<ADSC) ; 
-			sprintf(LCDBuffer, "%d", Ain);
-	 		//results to hyperterm
-	  		LCDGotoXY(0, 0);
-	  		LCDstring(LCDBuffer, strlen(LCDBuffer));
+			poll();
 			triggerPoll = 0;
     	}
 	    if (justSwitched){

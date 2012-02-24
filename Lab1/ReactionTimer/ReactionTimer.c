@@ -17,7 +17,6 @@
 #include <string.h>
 #include "lcd_lib.h"
 #include <avr/eeprom.h>
-//#include <stdio.h>
 
 //set up the debugging utility ASSERT
 //#define __ASSERT_USE_STDERR
