@@ -346,9 +346,9 @@ void Initialize(void) {
 	TCCR0B = 0b00000011;	// clock prescalar to 64
 
 	//set up timer 1 to interrupt on capture
-	//TIMSK1 = (1 << ICIE1); //turn on timer1 input capture ISR
-	//TCCR1A = 0b00000010;
-	//TCCR1B = (1 << ICNC1) | (1 << ICES1) | 0b00000101; // Start 
+	TIMSK1 = (1 << ICIE1); //turn on timer1 input capture ISR
+	TCCR1A = 0b00000010;
+	TCCR1B = (1 << ICNC1) | (1 << ICES1) | 0b00000001; // Start 
 
 	// init the UART -- uart_init() is in uart.c
 	//uart_init();
@@ -816,6 +816,7 @@ int main(void){
 					LCDclr();
 				 	CopyStringtoLCD(LCDMode, 0, 0);
 					CopyStringtoLCD(LCDVolt, MODE_START, 0);
+					setOref(3); // disable ohmmeter
 					if (autoRange){
 						CopyStringtoLCD(LCDAutorangeOn, 0, 1);
 					}
@@ -840,6 +841,7 @@ int main(void){
 					LCDclr();
 					CopyStringtoLCD(LCDMode, 0, 0);
 					CopyStringtoLCD(LCDOhm, MODE_START, 0);
+					setVref(0); // 5v reference
 					if (autoRange){
 						CopyStringtoLCD(LCDAutorangeOn, 0, 1);
 					}
@@ -856,7 +858,6 @@ int main(void){
 								CopyStringtoLCD(LCD1kOhm, RANGE_START, 1);
 								break;
 						}
-						setVref(0); // 5v reference
 						setOref(rangeIdx);
 					}
 					break;
@@ -865,6 +866,11 @@ int main(void){
 					LCDclr();
 					CopyStringtoLCD(LCDMode, 0, 0);
 					CopyStringtoLCD(LCDFreq, MODE_START, 0);
+
+					//Set the prescalar on TIMER1 to the appropriate range
+ 					TCCR1B &= ~0x07;
+ 					TCCR1B |= TIMERAprescalars[rangeIdx];
+
 					if (autoRange){
 						CopyStringtoLCD(LCDAutorangeOn, 0, 1);
 					}
