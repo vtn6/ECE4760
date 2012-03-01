@@ -105,7 +105,6 @@ volatile uint8_t triggerPoll;	// set to true to poll the inputs
 volatile char Ain;//, AinLow;	//The voltage to measure
 volatile float Vref;			//The reference voltage
 volatile uint8_t ohmRef;			//The reference resistor
-volatile uint8_t frequencyRef;	//The reference freuqnecy
 volatile uint16_t T1Capture;		//Used for determining frequency
 volatile uint16_t lastT1Capture;	//Used for determining frequency
 volatile uint16_t period;		//Period of the waveform measured
@@ -184,18 +183,6 @@ ISR (TIMER1_CAPT_vect){
 	period = T1Capture - lastT1Capture;
 	lastT1Capture = T1Capture;
 
-	//if the clock is running too slow, change the prescalar
-	/*
-	if (period < 100){
-		rangeIdx--;
-		rangeIdx = rangeIdx % rangeIdxMod;
-		frequencyRef = frequencyRanges[rangeIdx];
-		
-		//Set up the TIMERA prescalar
-		//TCCR1B &= ~0x07;
-		//TCCR1B |= TIMERAprescalars[rangeIdx];
-	}
-	*/
 }
 
 //END TIMER INTERRUPTS*********************************************************
