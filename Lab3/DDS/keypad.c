@@ -4,7 +4,6 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define RELEASED 0
@@ -17,8 +16,8 @@ unsigned char keytbl[16] = {0xee, 0xed, 0xeb, 0xe7,
 							0xde, 0xdd, 0xdb, 0xd7, 
 							0xbe, 0xbd, 0xbb, 0xb7, 
 							0x7e, 0x7d, 0x7b, 0x77};
-char input[256] = "";
-char finished = 0; // set to 1 if string has been fully entered
+int KeypadInput = 0;
+char KeypadFinished = 0; // set to 1 if string has been fully entered
 
 volatile uint8_t curKey;		//current key pressed 
 volatile uint8_t keyState = RELEASED;		//current state for Debounce State Machine
@@ -56,42 +55,42 @@ uint8_t KeypadScan(void) {
 }
 
 void KeypadAppend(uint8_t key) {
-	char c = 0;
+	uint8_t c = 0;
 	// reset string
-	if(finished == 1) {
-		finished = 0;
-		sprintf("",input);
+	if(KeypadFinished == 1) {
+		KeypadFinished = 0;
+		KeypadInput = 0;
 	}
 	switch(key) {
 		case KEY_0:
-			c = '0';
+			c = 0;
 			break;
 		case KEY_1:
-			c = '1';
+			c = 1;
 			break;
 		case KEY_2:
-			c = '2';
+			c = 2;
 			break;
 		case KEY_3:
-			c = '3';
+			c = 3;
 			break;
 		case KEY_4:
-			c = '4';
+			c = 4;
 			break;
 		case KEY_5:
-			c = '5';
+			c = 5;
 			break;
 		case KEY_6:
-			c = '6';
+			c = 6;
 			break;
 		case KEY_7:
-			c = '7';
+			c = 7;
 			break;
 		case KEY_8:
-			c = '8';
+			c = 8;
 			break;
 		case KEY_9:
-			c = '9';
+			c = 9;
 			break;
 		case KEY_P:
 		case KEY_S:
@@ -99,12 +98,12 @@ void KeypadAppend(uint8_t key) {
 		case KEY_B:
 		case KEY_C:
 		case KEY_D:
-			finished = 1;
+			KeypadFinished = 1;
 			break;
 	}
-	// append to string
+	// append to integer
 	if(c) {
-		input[strlen(input)] = c;
+		KeypadInput = (KeypadInput * 10) + c;
 	}
 }
 
@@ -160,9 +159,11 @@ uint8_t KeypadKey(void) {
 	return tmpKey;
 }
 
-uint8_t KeypadInt(void) {
-	if (finished) {
-		return atoi(input);
+
+// get pressed integer (delimited before and after by any non-integer)
+int KeypadInt(void) {
+	if (KeypadFinished) {
+		return KeypadInput;
 	} else {
 		return 0;
 	}
