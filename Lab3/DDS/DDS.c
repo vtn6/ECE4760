@@ -26,12 +26,31 @@
 //LCD Strings
 const uint8_t LCDHelloTop[] PROGMEM = "SYNTH v9001\0"; // Welcome Message
 const uint8_t LCDHelloBot[] PROGMEM = "PRESS # FOR HELP\0";
+const uint8_t LCDSequenceId[] PROGMEM = "SEQUENCE ID \0"; 
+const uint8_t LCDMainFrequency[] PROGMEM = "MAIN FREQ \0";
+const uint8_t LCDMainDecay[] PROGMEM = "MAIN DECAY \0";
+const uint8_t LCDMainRise[] PROGMEM = "MAIN RISE \0";
+const uint8_t LCDFMFreq[] PROGMEM = "FM FREQ \0";
+const uint8_t LCDFMDepth[] PROGMEM = "FM DEPTH \0";
+const uint8_t LCDFMDecay[] PROGMEM = "FM DECAY \0";
+const uint8_t LCDVoice[] PROGMEM = "VOICE \0";
+
+//LCD String lengths
+const uint8_t seqStrLen = strlen(LCDSequenceId);
+const uint8_t mainFreqStrLen = strlen(LCDMainFrequency);
+const uint8_t mainDecayStrLen = strlen(LCDMainDecay);
+const uint8_t mainRiseStrLen = strlen(LCDMainRise);
+const uint8_t fmFreqStrLen = strlen(LCDFMFreq);
+const uint8_t fmDepthStrLen = strlen(LCDFMDepth);
+const uint8_t fmDecayStrLen = strlen(LCDFMDecay);
+const uint8_t voiceStrLen = strlen(LCDVoice);
 
 // The DDS variables 
 volatile unsigned int acc_main, acc_fm1 ;
 volatile unsigned char high_main, high_fm1, decay_fm1, decay_main, depth_fm1, rise_main ;
 volatile unsigned int inc_main, inc_fm1, amp_main, amp_fm1 ;
 volatile unsigned int rise_phase_main, amp_rise_main, amp_fall_main ;
+volatile uint8_t voice;
 #define max_amp 32767
 // tables for DDS			
 signed char sineTable[256], fm1 ;
@@ -54,6 +73,12 @@ volatile uint8_t voice;
 #define  SET_INC_FM 7
 #define  SET_DEPTH_FM 8
 #define  SET_DECAY_FM 9
+
+//voice IDs
+#define VOICE_1 0
+#define VOICE_2 1
+#define VOICE_3 2
+#define VOICE_4 3
 
 // trigger
 volatile char pluck, pushed ;
@@ -214,9 +239,9 @@ void initLCD(void){
 ///////////////////////////////////////////////////// 
 //Update the LCD
 void updateLCD(void){
+	LCDclr();
 	switch (state) {
 	 	case MAIN_SCREEN:
-			LCDclr();
 			CopyStringtoLCD(LCDHelloTop, 0, 0);
 			CopyStringtoLCD(LCDHelloBot, 0, 1);
 			break;
@@ -224,43 +249,53 @@ void updateLCD(void){
 			updateManual();
 			break;
 		case SET_SEQUENCE:
-			LCDclr();
-//			CopyStringtoLCD(
-			LCDGotoXY(0, 1);
+			CopyStringtoLCD(LCDSequenceId, 0, 1);
+			LCDGotoXY(seqStrLen, 1);
 			sprintf(LCDBuffer, "%d", seqId);
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 		case SET_INC_MAIN:
-			LCDGotoXY(0, 1);
+			CopyStringtoLCD(LCDMainFrequency, 0, 1);
+			LCDGotoXY(mainFreqStrLen, 1);
 			sprintf(LCDBuffer, "%d", inc_main);
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 		case SET_DECAY_MAIN:
-			LCDGotoXY(0, 1);
+			CopyStringtoLCD(LCDMainDecay, 0, 1);
+			LCDGotoXY(mainDecayStrLen, 1);
 			sprintf(LCDBuffer, "%d", decay_main);
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 		case SET_RISE_MAIN:
-			LCDGotoXY(0, 1);
+			CopyStringtoLCD(LCDMainRise, 0, 1);
+			LCDGotoXY(mainRiseStrLen, 1);
 			sprintf(LCDBuffer, "%d", rise_main);
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 		case SET_INC_FM:
-			LCDGotoXY(0, 1);
+			CopyStringtoLCD(LCDFMFreq, 0, 1);
+			LCDGotoXY(fmFreqStrLen, 1);
 			sprintf(LCDBuffer, "%d", inc_fm1);
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 		case SET_DEPTH_FM:
-			LCDGotoXY(0, 1);
+			CopyStringtoLCD(LCDFMDepth, 0, 1);
+			LCDGotoXY(fmDepthStrLen, 1);
 			sprintf(LCDBuffer, "%d", depth_fm1);
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 		case SET_DECAY_FM:
-			LCDGotoXY(0, 1);
+			CopyStringtoLCD(LCDFMDecay, 0, 1);
+			LCDGotoXY(fmDecayStrLen, 1);
 			sprintf(LCDBuffer, "%d", decay_fm1);
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 	}
+
+	CopyStringtoLCD(LCDVoice, 0, 0);
+	LCDGotoXY(voiceStrLen, 0);
+	sprintf(LCDBuffer, "d", voice);
+	LCDstring(LCDBuffer, 1);
 }
 
 void updateManual(void){

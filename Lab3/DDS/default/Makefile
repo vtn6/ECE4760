@@ -13,7 +13,7 @@ COMMON = -mmcu=$(MCU)
 
 ## Compile options common for all C compilation units.
 CFLAGS = $(COMMON)
-CFLAGS += -Wall -gdwarf-2 -std=gnu99    -DF_CPU=16000000UL -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+CFLAGS += -Wall -gdwarf-2 -Os -std=gnu99 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CFLAGS += -MD -MP -MT $(*F).o -MF dep/$(@F).d 
 
 ## Assembly specific flags
@@ -35,7 +35,7 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
 ## Objects that must be built in order to link
-OBJECTS = DDS.o lcd_lib.o uart.o keypad.o 
+OBJECTS = DDS.o keypad.o lcd_lib.o uart.o 
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
@@ -47,13 +47,13 @@ all: $(TARGET) DDS.hex DDS.eep DDS.lss size
 DDS.o: ../DDS.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
+keypad.o: ../keypad.c
+	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
+
 lcd_lib.o: ../lcd_lib.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 uart.o: ../uart.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-keypad.o: ../keypad.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link
