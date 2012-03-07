@@ -162,9 +162,9 @@ uint8_t KeypadKey(void) {
 
 // get pressed integer (delimited before and after by any non-integer)
 int KeypadInt(void) {
-	if (KeypadFinished) {
-		return KeypadInput;
-	} else {
-		return 0;
-	}
+	return KeypadInput;
+}
+
+uint8_t KeypadFin(void) {
+	return KeypadFinished;
 }

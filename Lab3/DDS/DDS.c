@@ -1,6 +1,11 @@
 // DDS output thru PWM on timer0 OC0A (pin B.3)
 // Mega644 version
 // FM synthesis
+
+// Controls:
+// A To switch Mode
+// # For help
+// D to Enter
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
@@ -103,12 +108,12 @@ void Initialize(void);
 void initLCD(void);
 void updateLCD();
 void updateManual(void);
+void setState(uint8_t);
+void nextState(void);
 
-ISR (TIMER1_COMPA_vect) // Fs = 8000
-{ 
-	// turn on timer for profiling
-	TCNT2 = 0; TCCR2B = 1;
 
+//returns OCR0A
+uint8_t sample(void) {
 	// compute exponential attack and decay of amplitude
 	// the (time & 0x0ff) slows down the decay computation by 256 times		
 	if ((time & 0x0ff) == 0) {
@@ -148,12 +153,26 @@ ISR (TIMER1_COMPA_vect) // Fs = 8000
 	// output the wavefrom sample
 	// scale amplitude to use only high byte and shift into range
 	// 0 to 255
-	OCR0A = 128 + (((amp_main>>8) * (int)sineTable[high_main])>>7) ;
+	return 128 + (((amp_main>>8) * (int)sineTable[high_main])>>7) ;
+}
+
+ISR (TIMER1_COMPA_vect) // Fs = 8000
+{ 
+	// turn on timer for profiling
+	//TCNT2 = 0; TCCR2B = 1;
+
+	// Set Sample
+	OCR0A = sample();
 	
 	time++;     //ticks at 8 KHz 
 	// profiling 
-	TCCR2B = 0;
+	//TCCR2B = 0;
 } 
+
+// Every 1ms
+ISR (TIMER2_COMPA_vect){
+	KeypadDebounce();
+}
  
 /////////////////////////////////////////////////////
 //Initialization code
@@ -191,6 +210,12 @@ void Initialize(void){
 	TIMSK1 = (1<<OCIE1A) ;
 	TCCR1B = 0x09; 	//full speed; clear-on-match
   	TCCR1A = 0x00;	//turn off pwm and oc lines
+
+	//set up timer 2 for 1 mSec ticks
+	TIMSK2 = 2;		//turn on timer 0 cmp match ISR
+	OCR2A = 249;	//set the compare reg to 250 time ticks
+	TCCR2A = 0b00000010; // turn on clear-on-match
+	TCCR2B = 0b00000011;	// clock prescalar to 64
 
 	initLCD();
 	
@@ -301,6 +326,94 @@ void updateLCD(void){
 void updateManual(void){
 
 }
+
+void setState(uint8_t s) {
+	state = s;
+	updateLCD();
+}
+
+// update to next state if key is pressed
+uint8_t waitingForInput = 0;
+void nextState(void){
+	if(waitingForInput) {
+		// output input to screen
+	}
+	uint8_t key = KeypadKey();
+	switch(key) {
+		case KEY_P:
+			setState(MAN);
+			break;
+		case KEY_A:
+			setState((state + 1) % 10);
+			break;
+	}
+	switch (state) {
+		case SET_SEQUENCE:
+			if(key == KEY_D) {
+				seqId = KeypadInt();
+				waitingForInput = 0;
+			} else {
+				setState(MAIN_SCREEN);
+				waitingForInput = 1;
+			}
+			break;
+		case SET_INC_MAIN:
+			if(key == KEY_D) {
+				inc_main = KeypadInt();
+				waitingForInput = 0;
+			} else {
+				setState(MAIN_SCREEN);
+				waitingForInput = 1;
+			}
+			break;
+		case SET_DECAY_MAIN:
+			if(key == KEY_D) {
+				decay_main = KeypadInt();
+				waitingForInput = 0;
+			} else {
+				setState(MAIN_SCREEN);
+				waitingForInput = 1;
+			}
+			break;
+		case SET_RISE_MAIN:
+			if(key == KEY_D) {
+				rise_main = KeypadInt();
+				waitingForInput = 0;
+			} else {
+				setState(MAIN_SCREEN);
+				waitingForInput = 1;
+			}
+			break;
+		case SET_INC_FM:
+			if(key == KEY_D) {
+				inc_fm1 = KeypadInt();
+				waitingForInput = 0;
+			} else {
+				setState(MAIN_SCREEN);
+				waitingForInput = 1;
+			}
+			break;
+		case SET_DEPTH_FM:
+			if(key == KEY_D) {
+				depth_fm1 = KeypadInt();
+				waitingForInput = 0;
+			} else {
+				setState(MAIN_SCREEN);
+				waitingForInput = 1;
+			}
+			break;
+		case SET_DECAY_FM:
+			if(key == KEY_D) {
+				decay_fm1 = KeypadInt();
+				waitingForInput = 0;
+			} else {
+				setState(MAIN_SCREEN);
+				waitingForInput = 1;
+			}
+			break;
+		
+	}
+}
 /////////////////////////////////////////////////////
 int main(void)
 { 
@@ -318,7 +431,8 @@ int main(void)
 				pushed = 0;
 			}
 		//	printf("%d\n\r", TCNT2);
-		}		
+		}
+		nextState();
 
    } // while(1)
 
