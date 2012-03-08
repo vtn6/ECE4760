@@ -41,14 +41,14 @@ const uint8_t LCDFMDecay[] PROGMEM = "FM DECAY \0";
 const uint8_t LCDVoice[] PROGMEM = "VOICE \0";
 
 //LCD String lengths
-const uint8_t seqStrLen = strlen(LCDSequenceId);
-const uint8_t mainFreqStrLen = strlen(LCDMainFrequency);
-const uint8_t mainDecayStrLen = strlen(LCDMainDecay);
-const uint8_t mainRiseStrLen = strlen(LCDMainRise);
-const uint8_t fmFreqStrLen = strlen(LCDFMFreq);
-const uint8_t fmDepthStrLen = strlen(LCDFMDepth);
-const uint8_t fmDecayStrLen = strlen(LCDFMDecay);
-const uint8_t voiceStrLen = strlen(LCDVoice);
+int8_t seqStrLen;
+int8_t mainFreqStrLen;
+int8_t mainDecayStrLen;
+int8_t mainRiseStrLen;
+int8_t fmFreqStrLen;
+int8_t fmDepthStrLen;
+int8_t fmDecayStrLen;
+int8_t voiceStrLen;
 
 // The DDS variables 
 volatile unsigned int acc_main, acc_fm1 ;
@@ -102,9 +102,9 @@ signed char sineTable[256], fm1 ;
 //MarKov Matrices
 #define NUM_NOTES 8
 uint8_t curNote;
-const uint16_t markovFrequencies[7] = {262, 294, 330, 392, 440, 523, 587, 659};
+const uint16_t markovFrequencies[8] = {262, 294, 330, 392, 440, 523, 587, 659};
  
-const uint8_t ascendingMarkov[63] = {0, 1, 0, 0, 0, 0, 0, 0,
+const uint8_t ascendingMarkov[64] = {0, 1, 0, 0, 0, 0, 0, 0,
 									 0, 0, 1, 0, 0, 0, 0, 0,
 									 0, 0, 0, 1, 0, 0, 0, 0,
 									 0, 0, 0, 0, 1, 0, 0, 0,
@@ -112,7 +112,7 @@ const uint8_t ascendingMarkov[63] = {0, 1, 0, 0, 0, 0, 0, 0,
 									 0, 0, 0, 0, 0, 0, 1, 0,
 									 1, 0, 0, 0, 0, 0, 0, 0};
 									 
-const uint8_t uniformMarkov[63] = {125, 125, 125, 125, 125, 125, 125, 125,
+const uint8_t uniformMarkov[64] = {125, 125, 125, 125, 125, 125, 125, 125,
 								   125, 125, 125, 125, 125, 125, 125, 125,
 								   125, 125, 125, 125, 125, 125, 125, 125,
 								   125, 125, 125, 125, 125, 125, 125, 125,
@@ -120,7 +120,7 @@ const uint8_t uniformMarkov[63] = {125, 125, 125, 125, 125, 125, 125, 125,
 								   125, 125, 125, 125, 125, 125, 125, 125,
 								   125, 125, 125, 125, 125, 125, 125, 125,
 								   125, 125, 125, 125, 125, 125, 125, 125};
-const uint8_t chaoticMarkov[63] = {55, 9, 9, 56, 26, 30, 27, 43,
+const uint8_t chaoticMarkov[64] = {55, 9, 9, 56, 26, 30, 27, 43,
 								   43, 46, 54, 21, 11, 40, 2, 38,
 								   19, 22, 9, 20, 64, 34, 47, 40,
 								   44, 39, 22, 16, 12, 40, 49, 33,
@@ -129,7 +129,7 @@ const uint8_t chaoticMarkov[63] = {55, 9, 9, 56, 26, 30, 27, 43,
 								   23, 36, 52, 15, 21, 54, 26, 28,  
 								   28, 32, 16, 27, 61, 50, 38, 3};
 	
-const uint8_t descendingMarkov[63] = {0, 0, 0, 0, 0, 0, 0, 1,
+const uint8_t descendingMarkov[64] = {0, 0, 0, 0, 0, 0, 0, 1,
 									  1, 0, 0, 0, 0, 0, 0, 0,
 									  0, 1, 0, 0, 0, 0, 0, 0,
 									  0, 0, 1, 0, 0, 0, 0, 0,
@@ -164,8 +164,8 @@ volatile uint8_t voice;
 #define VOICE_6 5
 
 //constants for random number generation
-#define RND_MAX = 255;
-#define RND_MIN = 0;
+const uint8_t RND_MAX = 255;
+const uint8_t RND_MIN = 0;
 // trigger
 volatile char pluck, pushed ;
 
@@ -258,42 +258,42 @@ ISR (TIMER2_COMPA_vect){
 /////////////////////////////////////////////////////
 //Initialization code
 void Initialize(void){
-   // make B.3 an output
-   DDRB = (1<<PINB3) ;
+	// make B.3 an output
+	DDRB = (1<<PINB3) ;
 
 	//Keypad
 	DDRD=0x00;
-   
-   //init the UART -- uart_init() is in uart.c
+
+	//init the UART -- uart_init() is in uart.c
 	//uart_init();
 	//stdout = stdin = stderr = &uart_str;
 	//fprintf(stdout,"Starting...\n\r");
 
-   // init the sine table
-   for (i=0; i<256; i++)
-   {
-   		sineTable[i] = (char)(127.0 * sin(6.283*((float)i)/256.0)) ;
-   }  
+	// init the sine table
+	for (i=0; i<256; i++)
+	{
+		sineTable[i] = (char)(127.0 * sin(6.283*((float)i)/256.0)) ;
+	}  
 
-   // init the time counter
-   time=0;
+	// init the time counter
+	time=0;
 
-   // timer 0 runs at full rate
-   TCCR0B = 1 ;  
-   //turn off timer 0 overflow ISR
-   TIMSK0 = 0 ;
-   // turn on PWM
-   // turn on fast PWM and OC0A output
-   // at full clock rate, toggle OC0A (pin B3) 
-   // 16 microsec per PWM cycle sample time
-   TCCR0A = (1<<COM0A0) | (1<<COM0A1) | (1<<WGM00) | (1<<WGM01) ; 
-   OCR0A = 128 ; // set PWM to half full scale
-	
+	// timer 0 runs at full rate
+	TCCR0B = 1 ;  
+	//turn off timer 0 overflow ISR
+	TIMSK0 = 0 ;
+	// turn on PWM
+	// turn on fast PWM and OC0A output
+	// at full clock rate, toggle OC0A (pin B3) 
+	// 16 microsec per PWM cycle sample time
+	TCCR0A = (1<<COM0A0) | (1<<COM0A1) | (1<<WGM00) | (1<<WGM01) ; 
+	OCR0A = 128 ; // set PWM to half full scale
+
 	// timer 1 ticks at 8000 Hz or 125 microsecs period=2000 ticks
 	OCR1A = 1999 ; // 2000 ticks
 	TIMSK1 = (1<<OCIE1A) ;
 	TCCR1B = 0x09; 	//full speed; clear-on-match
-  	TCCR1A = 0x00;	//turn off pwm and oc lines
+	TCCR1A = 0x00;	//turn off pwm and oc lines
 
 	//set up timer 2 for 1 mSec ticks
 	TIMSK2 = 2;		//turn on timer 2 cmp match ISR
@@ -301,36 +301,46 @@ void Initialize(void){
 	TCCR2A = 0b00000010; // turn on clear-on-match
 	TCCR2B = 0b00000011;	// clock prescalar to 64
 
+
+	seqStrLen = strlen(LCDSequenceId);
+	mainFreqStrLen = strlen(LCDMainFrequency);
+	mainDecayStrLen = strlen(LCDMainDecay);
+	mainRiseStrLen = strlen(LCDMainRise);
+	fmFreqStrLen = strlen(LCDFMFreq);
+	fmDepthStrLen = strlen(LCDFMDepth);
+	fmDecayStrLen = strlen(LCDFMDecay);
+	voiceStrLen = strlen(LCDVoice);
+
 	initLCD();
-	
-   // turn on all ISRs
-   sei() ;
+
+	// turn on all ISRs
+	sei() ;
    
-  
-   ///////////////////////////////////////////////////
-   // Sound parameters
-   ///////////////////////////////////////////////////
-   // Base frequency
-   // 2^16/8000*freq = 8.192*freq
-   inc_main = (int)(8.192 * 261) ; 
-   // rise and decay SHIFT factor  -- bigger is slower
-   // 6 implies tau of 64 cycles
-   // 8 implies tau of 256 cycles
-   // max value is 8
-   decay_main = 4 ;
-   rise_main = 0 ;
-   //
-   // FM modulation rate -- also a frequency
-   inc_fm1 = (int)(8.192 * 65) ;
-   // FM modulation depth SHIFT factor 
-   // bigger factor implies smaller FM!
-   // useful range is 4 to 15
-   depth_fm1 = 7 ;
-   // decay SHIFT factor -- bigger is slower
-   // 6 implies tau of 64 cycles
-   // 8 implies tau of 256 cycles
-   // max value is 8
-   decay_fm1 = 6 ;
+
+	///////////////////////////////////////////////////
+	// Sound parameters
+	///////////////////////////////////////////////////
+	// Base frequency
+	// 2^16/8000*freq = 8.192*freq
+	inc_main = (int)(8.192 * 261) ; 
+	// rise and decay SHIFT factor  -- bigger is slower
+	// 6 implies tau of 64 cycles
+	// 8 implies tau of 256 cycles
+	// max value is 8
+	decay_main = 4 ;
+	rise_main = 0 ;
+	//
+	// FM modulation rate -- also a frequency
+	inc_fm1 = (int)(8.192 * 65) ;
+	// FM modulation depth SHIFT factor 
+	// bigger factor implies smaller FM!
+	// useful range is 4 to 15
+	depth_fm1 = 7 ;
+	// decay SHIFT factor -- bigger is slower
+	// 6 implies tau of 64 cycles
+	// 8 implies tau of 256 cycles
+	// max value is 8
+	decay_fm1 = 6 ;
 }
   ////////////////////////////////////////////////////
 
@@ -404,7 +414,7 @@ void updateLCD(void){
 
 	CopyStringtoLCD(LCDVoice, 0, 0);
 	LCDGotoXY(voiceStrLen, 0);
-	sprintf(LCDBuffer, "d", voice);
+	sprintf(LCDBuffer, "%d", voice);
 	LCDstring(LCDBuffer, 1);
 }
 
@@ -419,13 +429,13 @@ void setState(uint8_t s) {
 
 //set the next note to play
 void setNextNote(){
-	uint8_t nextNote;
 	switch (seqId){
 		case 1:
 			inc_main = markovFrequencies[curNote++ % NUM_NOTES];
 			break;
 	}
-	//nextNote = rand() % (RND_MAX - RND_MIN + 1) + RND_MIN;
+	//for some reason, doesn't like rand()
+	//uint8_t nextNote = (rand() % (RND_MAX - RND_MIN + 1)) + RND_MIN;
 }
 
 // update to next state if key is pressed
