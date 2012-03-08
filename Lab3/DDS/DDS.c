@@ -55,15 +55,91 @@ volatile unsigned int acc_main, acc_fm1 ;
 volatile unsigned char high_main, high_fm1, decay_fm1, decay_main, depth_fm1, rise_main ;
 volatile unsigned int inc_main, inc_fm1, amp_main, amp_fm1 ;
 volatile unsigned int rise_phase_main, amp_rise_main, amp_fall_main ;
+/*
+//Voice 1
+volatile unsigned int voice1_acc_main, voice1_acc_fm1 ;
+volatile unsigned char voice1_high_main, voice1_high_fm1, voice1_decay_fm1, voice1_decay_main, voice1_depth_fm1, voice1_rise_main ;
+volatile unsigned int voice1_inc_main, voice1_inc_fm1, voice1_amp_main, voice1_amp_fm1 ;
+volatile unsigned int voice1_rise_phase_main, voice1_amp_rise_main, voice1_amp_fall_main ;
+
+//Voice 2
+volatile unsigned int voice2_acc_main, voice2_acc_fm1 ;
+volatile unsigned char voice2_high_main, voice2_high_fm1, voice2_decay_fm1, voice2_decay_main, voice2_depth_fm1, voice2_rise_main ;
+volatile unsigned int voice2_inc_main, voice2_inc_fm1, voice2_amp_main, voice2_amp_fm1 ;
+volatile unsigned int voice2_rise_phase_main, voice2_amp_rise_main, voice2_amp_fall_main ;
+
+//Voice 3
+volatile unsigned int voice3_acc_main, voice3_acc_fm1 ;
+volatile unsigned char voice3_high_main, voice3_high_fm1, voice3_decay_fm1, voice3_decay_main, voice3_depth_fm1, voice3_rise_main ;
+volatile unsigned int voice3_inc_main, voice3_inc_fm1, voice3_amp_main, voice3_amp_fm1 ;
+volatile unsigned int voice3_rise_phase_main, voice3_amp_rise_main, voice3_amp_fall_main ;
+
+//Voice 4
+volatile unsigned int voice4_acc_main, voice4_acc_fm1 ;
+volatile unsigned char voice4_high_main, voice4_high_fm1, voice4_decay_fm1, voice4_decay_main, voice4_depth_fm1, voice4_rise_main ;
+volatile unsigned int voice4_inc_main, voice4_inc_fm1, voice4_amp_main, voice4_amp_fm1 ;
+volatile unsigned int voice4_rise_phase_main, voice4_amp_rise_main, voice4_amp_fall_main ;
+
+//Voice 5
+volatile unsigned int voice5_acc_main, voice5_acc_fm1 ;
+volatile unsigned char voice5_high_main, voice5_high_fm1, voice5_decay_fm1, voice5_decay_main, voice5_depth_fm1, voice5_rise_main ;
+volatile unsigned int voice5_inc_main, voice5_inc_fm1, voice5_amp_main, voice5_amp_fm1 ;
+volatile unsigned int voice5_rise_phase_main, voice5_amp_rise_main, voice5_amp_fall_main ;
+
+//Voice 6
+volatile unsigned int voice6_acc_main, voice6_acc_fm1 ;
+volatile unsigned char voice6_high_main, voice6_high_fm1, voice6_decay_fm1, voice6_decay_main, voice6_depth_fm1, voice6_rise_main ;
+volatile unsigned int voice6_inc_main, voice6_inc_fm1, voice6_amp_main, voice6_amp_fm1 ;
+volatile unsigned int voice6_rise_phase_main, voice6_amp_rise_main, voice6_amp_fall_main ;
+*/
+
+volatile uint8_t maxDuration;
 volatile uint8_t voice;
 #define max_amp 32767
 // tables for DDS			
 signed char sineTable[256], fm1 ;
 
+//MarKov Matrices
+#define NUM_NOTES 8
+uint8_t curNote;
+const uint16_t markovFrequencies[7] = {262, 294, 330, 392, 440, 523, 587, 659};
+ 
+const uint8_t ascendingMarkov[63] = {0, 1, 0, 0, 0, 0, 0, 0,
+									 0, 0, 1, 0, 0, 0, 0, 0,
+									 0, 0, 0, 1, 0, 0, 0, 0,
+									 0, 0, 0, 0, 1, 0, 0, 0,
+									 0, 0, 0, 0, 0, 1, 0, 0,
+									 0, 0, 0, 0, 0, 0, 1, 0,
+									 1, 0, 0, 0, 0, 0, 0, 0};
+									 
+const uint8_t uniformMarkov[63] = {125, 125, 125, 125, 125, 125, 125, 125,
+								   125, 125, 125, 125, 125, 125, 125, 125,
+								   125, 125, 125, 125, 125, 125, 125, 125,
+								   125, 125, 125, 125, 125, 125, 125, 125,
+								   125, 125, 125, 125, 125, 125, 125, 125,
+								   125, 125, 125, 125, 125, 125, 125, 125,
+								   125, 125, 125, 125, 125, 125, 125, 125,
+								   125, 125, 125, 125, 125, 125, 125, 125};
+const uint8_t chaoticMarkov[63] = {55, 9, 9, 56, 26, 30, 27, 43,
+								   43, 46, 54, 21, 11, 40, 2, 38,
+								   19, 22, 9, 20, 64, 34, 47, 40,
+								   44, 39, 22, 16, 12, 40, 49, 33,
+								   22, 63, 20, 5, 34, 39, 57, 15,
+								   48, 29, 33, 47, 11, 23, 52, 12,
+								   23, 36, 52, 15, 21, 54, 26, 28,  
+								   28, 32, 16, 27, 61, 50, 38, 3};
+	
+const uint8_t descendingMarkov[63] = {0, 0, 0, 0, 0, 0, 0, 1,
+									  1, 0, 0, 0, 0, 0, 0, 0,
+									  0, 1, 0, 0, 0, 0, 0, 0,
+									  0, 0, 1, 0, 0, 0, 0, 0,
+									  0, 0, 0, 1, 0, 0, 0, 0,
+									  0, 0, 0, 0, 1, 0, 0, 0,
+									  0, 0, 0, 0, 0, 1, 0, 0,
+									  0, 0, 0, 0, 0, 0, 1, 0}; 
+
 //the sequencer id
 volatile uint8_t seqId;
-
-//tables for the Markov transition stuff
 
 //state variables
 volatile uint8_t state;
@@ -84,7 +160,12 @@ volatile uint8_t voice;
 #define VOICE_2 1
 #define VOICE_3 2
 #define VOICE_4 3
+#define VOICE_5 4
+#define VOICE_6 5
 
+//constants for random number generation
+#define RND_MAX = 255;
+#define RND_MIN = 0;
 // trigger
 volatile char pluck, pushed ;
 
@@ -116,7 +197,7 @@ void nextState(void);
 uint8_t sample(void) {
 	// compute exponential attack and decay of amplitude
 	// the (time & 0x0ff) slows down the decay computation by 256 times		
-	if ((time & 0x0ff) == 0) {
+	if (!(time & 0x0ff)) {
 		amp_fall_main = amp_fall_main - (amp_fall_main>>decay_main) ;
 		rise_phase_main = rise_phase_main - (rise_phase_main>>rise_main);
 		// compute exponential decay of FM depth of modulation
@@ -179,11 +260,14 @@ ISR (TIMER2_COMPA_vect){
 void Initialize(void){
    // make B.3 an output
    DDRB = (1<<PINB3) ;
+
+	//Keypad
+	DDRD=0x00;
    
    //init the UART -- uart_init() is in uart.c
-  //	uart_init();
-  //	stdout = stdin = stderr = &uart_str;
-  //	fprintf(stdout,"Starting...\n\r");
+	//uart_init();
+	//stdout = stdin = stderr = &uart_str;
+	//fprintf(stdout,"Starting...\n\r");
 
    // init the sine table
    for (i=0; i<256; i++)
@@ -212,7 +296,7 @@ void Initialize(void){
   	TCCR1A = 0x00;	//turn off pwm and oc lines
 
 	//set up timer 2 for 1 mSec ticks
-	TIMSK2 = 2;		//turn on timer 0 cmp match ISR
+	TIMSK2 = 2;		//turn on timer 2 cmp match ISR
 	OCR2A = 249;	//set the compare reg to 250 time ticks
 	TCCR2A = 0b00000010; // turn on clear-on-match
 	TCCR2B = 0b00000011;	// clock prescalar to 64
@@ -264,6 +348,7 @@ void initLCD(void){
 ///////////////////////////////////////////////////// 
 //Update the LCD
 void updateLCD(void){
+	return;
 	LCDclr();
 	switch (state) {
 	 	case MAIN_SCREEN:
@@ -332,6 +417,17 @@ void setState(uint8_t s) {
 	updateLCD();
 }
 
+//set the next note to play
+void setNextNote(){
+	uint8_t nextNote;
+	switch (seqId){
+		case 1:
+			inc_main = markovFrequencies[curNote++ % NUM_NOTES];
+			break;
+	}
+	//nextNote = rand() % (RND_MAX - RND_MIN + 1) + RND_MIN;
+}
+
 // update to next state if key is pressed
 uint8_t waitingForInput = 0;
 void nextState(void){
@@ -339,6 +435,12 @@ void nextState(void){
 		// output input to screen
 	}
 	uint8_t key = KeypadKey();
+	if(key != 0) {
+		//_delay_ms(1000);
+		sprintf(LCDBuffer, "%d", key);
+		//LCDGotoXY(0, 0);
+		LCDstring(LCDBuffer, strlen(LCDBuffer));
+	}
 	switch(key) {
 		case KEY_P:
 			setState(MAN);
@@ -417,12 +519,13 @@ void nextState(void){
 /////////////////////////////////////////////////////
 int main(void)
 { 
-
+   Initialize();
    while(1) {  
 		// Check pushbutton to pluck string
 		// and oneshot it
 		//  
-		if ((time & 0xff) == 0) {
+		/*
+		if (!(time & 0xff)) {
 			if ((~PINC & 0x01) && !pushed) {
 				 pluck = 1;
 				 pushed = 1;
@@ -432,6 +535,7 @@ int main(void)
 			}
 		//	printf("%d\n\r", TCNT2);
 		}
+		*/
 		nextState();
 
    } // while(1)

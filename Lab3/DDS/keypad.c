@@ -1,3 +1,5 @@
+// Use PORTA
+
 #include "keypad.h"
 
 #include <inttypes.h>
@@ -29,16 +31,16 @@ uint8_t KeypadScan(void) {
 	uint8_t key;
 	uint8_t butnum;
 	//get lower nibble
-	DDRD = 0x0f;
-	PORTD = 0xf0; 
+	DDRA = 0x0f;
+	PORTA = 0xf0; 
 	_delay_us(5);
-	key = PIND;
+	key = PINA;
 	
 	//get upper nibble
-	DDRD = 0xf0;
-	PORTD = 0x0f; 
+	DDRA = 0xf0;
+	PORTA = 0x0f; 
 	_delay_us(5);
-	key = key | PIND;
+	key = key | PINA;
 	
 	//find matching keycode in keytbl
 	if (key != 0xff) {
@@ -132,14 +134,15 @@ void KeypadDebounce(void) {
 			}
 			break;
 		case PUSHED:
-			if (!key){
+			if (key == 0){
 				keyState = MAYBERELEASED;
 				debounceTime = DEBOUNCE_TIME;
+				//curKey = 0;
 			}
 			break;
 		case MAYBERELEASED:
 			if (debounceTime == 0) {
-				if (!key) {
+				if (key != 0) {
 					keyState = RELEASED;
 				} else {
 					keyState = PUSHED;
