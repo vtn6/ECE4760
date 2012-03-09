@@ -50,48 +50,14 @@ int8_t fmDepthStrLen;
 int8_t fmDecayStrLen;
 int8_t voiceStrLen;
 
+#define NUM_VOICES 6
+
 // The DDS variables 
-volatile unsigned int acc_main, acc_fm1 ;
-volatile unsigned char high_main, high_fm1, decay_fm1, decay_main, depth_fm1, rise_main ;
-volatile unsigned int inc_main, inc_fm1, amp_main, amp_fm1 ;
-volatile unsigned int rise_phase_main, amp_rise_main, amp_fall_main ;
-/*
-//Voice 1
-volatile unsigned int voice1_acc_main, voice1_acc_fm1 ;
-volatile unsigned char voice1_high_main, voice1_high_fm1, voice1_decay_fm1, voice1_decay_main, voice1_depth_fm1, voice1_rise_main ;
-volatile unsigned int voice1_inc_main, voice1_inc_fm1, voice1_amp_main, voice1_amp_fm1 ;
-volatile unsigned int voice1_rise_phase_main, voice1_amp_rise_main, voice1_amp_fall_main ;
+volatile unsigned int acc_main[NUM_VOICES], acc_fm1[NUM_VOICES] ;
+volatile unsigned char high_main, high_fm1, decay_fm1[NUM_VOICES], decay_main[NUM_VOICES], depth_fm1[NUM_VOICES], rise_main[NUM_VOICES];
+volatile unsigned int inc_main[NUM_VOICES], inc_fm1[NUM_VOICES], amp_main[NUM_VOICES], amp_fm1[NUM_VOICES];
+volatile unsigned int rise_phase_main[NUM_VOICES], amp_rise_main[NUM_VOICES], amp_fall_main[NUM_VOICES];
 
-//Voice 2
-volatile unsigned int voice2_acc_main, voice2_acc_fm1 ;
-volatile unsigned char voice2_high_main, voice2_high_fm1, voice2_decay_fm1, voice2_decay_main, voice2_depth_fm1, voice2_rise_main ;
-volatile unsigned int voice2_inc_main, voice2_inc_fm1, voice2_amp_main, voice2_amp_fm1 ;
-volatile unsigned int voice2_rise_phase_main, voice2_amp_rise_main, voice2_amp_fall_main ;
-
-//Voice 3
-volatile unsigned int voice3_acc_main, voice3_acc_fm1 ;
-volatile unsigned char voice3_high_main, voice3_high_fm1, voice3_decay_fm1, voice3_decay_main, voice3_depth_fm1, voice3_rise_main ;
-volatile unsigned int voice3_inc_main, voice3_inc_fm1, voice3_amp_main, voice3_amp_fm1 ;
-volatile unsigned int voice3_rise_phase_main, voice3_amp_rise_main, voice3_amp_fall_main ;
-
-//Voice 4
-volatile unsigned int voice4_acc_main, voice4_acc_fm1 ;
-volatile unsigned char voice4_high_main, voice4_high_fm1, voice4_decay_fm1, voice4_decay_main, voice4_depth_fm1, voice4_rise_main ;
-volatile unsigned int voice4_inc_main, voice4_inc_fm1, voice4_amp_main, voice4_amp_fm1 ;
-volatile unsigned int voice4_rise_phase_main, voice4_amp_rise_main, voice4_amp_fall_main ;
-
-//Voice 5
-volatile unsigned int voice5_acc_main, voice5_acc_fm1 ;
-volatile unsigned char voice5_high_main, voice5_high_fm1, voice5_decay_fm1, voice5_decay_main, voice5_depth_fm1, voice5_rise_main ;
-volatile unsigned int voice5_inc_main, voice5_inc_fm1, voice5_amp_main, voice5_amp_fm1 ;
-volatile unsigned int voice5_rise_phase_main, voice5_amp_rise_main, voice5_amp_fall_main ;
-
-//Voice 6
-volatile unsigned int voice6_acc_main, voice6_acc_fm1 ;
-volatile unsigned char voice6_high_main, voice6_high_fm1, voice6_decay_fm1, voice6_decay_main, voice6_depth_fm1, voice6_rise_main ;
-volatile unsigned int voice6_inc_main, voice6_inc_fm1, voice6_amp_main, voice6_amp_fm1 ;
-volatile unsigned int voice6_rise_phase_main, voice6_amp_rise_main, voice6_amp_fall_main ;
-*/
 
 volatile uint8_t maxDuration;
 volatile uint8_t voice;
@@ -148,12 +114,13 @@ volatile uint8_t voice;
 #define  MAIN_SCREEN 1
 #define  MAN 2
 #define  SET_SEQUENCE 3
-#define  SET_INC_MAIN 4
-#define  SET_DECAY_MAIN 5
-#define  SET_RISE_MAIN 6
-#define  SET_INC_FM 7
-#define  SET_DEPTH_FM 8
-#define  SET_DECAY_FM 9
+#define  SET_VIDX 4
+#define  SET_INC_MAIN 5
+#define  SET_DECAY_MAIN 6
+#define  SET_RISE_MAIN 7
+#define  SET_INC_FM 8
+#define  SET_DEPTH_FM 9
+#define  SET_DECAY_FM 10
 
 //voice IDs
 #define VOICE_1 0
@@ -191,50 +158,56 @@ void updateLCD();
 void updateManual(void);
 void setState(uint8_t);
 void nextState(void);
-
+uint8_t sample(uint8_t);
 
 //returns OCR0A
-uint8_t sample(void) {
+uint8_t sample(uint8_t idx) {
+
 	// compute exponential attack and decay of amplitude
 	// the (time & 0x0ff) slows down the decay computation by 256 times		
 	if (!(time & 0x0ff)) {
-		amp_fall_main = amp_fall_main - (amp_fall_main>>decay_main) ;
-		rise_phase_main = rise_phase_main - (rise_phase_main>>rise_main);
+		amp_fall_main[idx] = amp_fall_main[idx] - (amp_fall_main[idx]>>decay_main[idx]);
+		rise_phase_main[idx] = rise_phase_main[idx] - (rise_phase_main[idx]>>rise_main[idx]);
 		// compute exponential decay of FM depth of modulation
-		amp_fm1 = amp_fm1 - (amp_fm1>>decay_fm1) ;
+		amp_fm1[idx] = amp_fm1[idx] - (amp_fm1[idx]>>decay_fm1[idx]) ;
 	}
 
 	// form (1-exp(-t/tau)) for the attack phase
-	amp_rise_main =  max_amp - rise_phase_main;
+	amp_rise_main[idx] =  max_amp - rise_phase_main[idx];
 	// product of rise and fall exponentials is the amplitude envelope
-	amp_main = (amp_rise_main>>8) * (amp_fall_main>>8) ;
+	amp_main[idx] = (amp_rise_main[idx]>>8) * (amp_fall_main[idx]>>8) ;
 
 	// Init the synth
 	if (pluck==1) {
-		amp_fall_main = max_amp; 
-		rise_phase_main = max_amp ;
-		amp_rise_main = 0 ;
-		amp_fm1 = max_amp ;
+		amp_fall_main[idx] = max_amp; 
+		rise_phase_main[idx] = max_amp ;
+		amp_rise_main[idx] = 0 ;
+		amp_fm1[idx] = max_amp ;
 		// phase lock the synth
-		acc_fm1 = 0 ;
-		acc_main = 0;
-		pluck = 0;
+		acc_fm1[idx] = 0 ;
+		acc_main[idx] = 0;
+		
+		//DIRTY UGLY HACK FIX THIS STUPID
+		if (idx == (NUM_VOICES - 1)) {
+			pluck = 0;
+		}
+
 	}
 
 	//the FM DDR -- feeds into final DDR
-	acc_fm1 = acc_fm1 + inc_fm1 ;
-	high_fm1 = (char)(acc_fm1 >> 8) ;
+	acc_fm1[idx] = acc_fm1[idx] + inc_fm1[idx] ;
+	high_fm1 = (char)(acc_fm1[idx] >> 8) ;
 	fm1 = sineTable[high_fm1] ;
 
 	//the final output DDR 
 	// phase accum = main_DDR_freq + FM_DDR * (FM amplitude)
-	acc_main = acc_main + (inc_main + (fm1*(amp_fm1>>depth_fm1))) ;
-	high_main = (char)(acc_main >> 8) ;
+	acc_main[idx] = acc_main[idx] + (inc_main[idx] + (fm1*(amp_fm1[idx]>>depth_fm1[idx]))) ;
+	high_main = (char)(acc_main[idx] >> 8) ;
 	
 	// output the wavefrom sample
 	// scale amplitude to use only high byte and shift into range
 	// 0 to 255
-	return 128 + (((amp_main>>8) * (int)sineTable[high_main])>>7) ;
+	return 128 + (((amp_main[idx]>>8) * (int)sineTable[high_main])>>7) ;
 }
 
 ISR (TIMER1_COMPA_vect) // Fs = 8000
@@ -243,7 +216,12 @@ ISR (TIMER1_COMPA_vect) // Fs = 8000
 	//TCNT2 = 0; TCCR2B = 1;
 
 	// Set Sample
-	OCR0A = sample();
+	uint8_t idx;
+	uint8_t voiceAccum = 0;
+	for (idx=0; idx < NUM_VOICES; idx++){
+		voiceAccum += sample(idx);
+	}
+	OCR0A = voiceAccum;
 	
 	time++;     //ticks at 8 KHz 
 	// profiling 
@@ -322,25 +300,61 @@ void Initialize(void){
 	///////////////////////////////////////////////////
 	// Base frequency
 	// 2^16/8000*freq = 8.192*freq
-	inc_main = (int)(8.192 * 261) ; 
+	inc_main[0] = (int)(8.192 * 261) ; 
 	// rise and decay SHIFT factor  -- bigger is slower
 	// 6 implies tau of 64 cycles
 	// 8 implies tau of 256 cycles
 	// max value is 8
-	decay_main = 4 ;
-	rise_main = 0 ;
+	decay_main[0] = 4 ;
+	rise_main[0] = 0 ;
 	//
 	// FM modulation rate -- also a frequency
-	inc_fm1 = (int)(8.192 * 65) ;
+	inc_fm1[0] = (int)(8.192 * 65) ;
 	// FM modulation depth SHIFT factor 
 	// bigger factor implies smaller FM!
 	// useful range is 4 to 15
-	depth_fm1 = 7 ;
+	depth_fm1[0] = 7 ;
 	// decay SHIFT factor -- bigger is slower
 	// 6 implies tau of 64 cycles
 	// 8 implies tau of 256 cycles
 	// max value is 8
-	decay_fm1 = 6 ;
+	decay_fm1[0] = 6 ;
+
+/*
+
+Chime:
+   inc_main = (int)(8.192 * 261.0) ; 
+   decay_main = 5 ;
+   rise_main = 1 ;
+   inc_fm1 = (int)(8.192 * 350.0) ;
+   depth_fm1 = 9 ;
+   decay_fm1 = 5 ;
+
+Plucked String:
+	inc_main = (int)(8.192 * 500.0) ; 
+   decay_main = 3 ;
+   rise_main = 1 ;
+   inc_fm1 = (int)(8.192 * 750.0) ;
+   depth_fm1 = 8 ;
+   decay_fm1 = 3 ;
+
+Small, stiff rod
+ 	inc_main = (int)(8.192 * 1440) ;   
+   decay_main = 3 ;
+   rise_main = 1 ;   
+   inc_fm1 = (int)(8.192 * 50) ; // at 100 get stiff string; at 200 get hollow pipe
+   depth_fm1 = 10 ; //or 9
+   decay_fm1 = 5 ;
+
+Bell/chime
+   inc_main = (int)(8.192 * 1440) ; 
+   decay_main = 5 ;
+   rise_main = 1 ;
+   inc_fm1 = (int)(8.192 * 600) ;
+   depth_fm1 = 8 ;
+   decay_fm1 = 6 ;
+
+*/
 }
   ////////////////////////////////////////////////////
 
@@ -358,7 +372,6 @@ void initLCD(void){
 ///////////////////////////////////////////////////// 
 //Update the LCD
 void updateLCD(void){
-	return;
 	LCDclr();
 	switch (state) {
 	 	case MAIN_SCREEN:
@@ -431,7 +444,7 @@ void setState(uint8_t s) {
 void setNextNote(){
 	switch (seqId){
 		case 1:
-			inc_main = markovFrequencies[curNote++ % NUM_NOTES];
+			inc_main[0] = markovFrequencies[curNote++ % NUM_NOTES];
 			break;
 	}
 	//for some reason, doesn't like rand()
@@ -440,6 +453,7 @@ void setNextNote(){
 
 // update to next state if key is pressed
 uint8_t waitingForInput = 0;
+uint8_t vidx = 0;
 void nextState(void){
 	if(waitingForInput) {
 		// output input to screen
@@ -469,9 +483,18 @@ void nextState(void){
 				waitingForInput = 1;
 			}
 			break;
+		case SET_VIDX:
+			if(key == KEY_D) {
+				vidx = KeypadInt() % NUM_VOICES;
+				waitingForInput = 0;
+			} else {
+				setState(MAIN_SCREEN);
+				waitingForInput = 1;
+			}
+			break;
 		case SET_INC_MAIN:
 			if(key == KEY_D) {
-				inc_main = KeypadInt();
+				inc_main[vidx] = KeypadInt();
 				waitingForInput = 0;
 			} else {
 				setState(MAIN_SCREEN);
@@ -480,7 +503,7 @@ void nextState(void){
 			break;
 		case SET_DECAY_MAIN:
 			if(key == KEY_D) {
-				decay_main = KeypadInt();
+				decay_main[vidx] = KeypadInt();
 				waitingForInput = 0;
 			} else {
 				setState(MAIN_SCREEN);
@@ -489,7 +512,7 @@ void nextState(void){
 			break;
 		case SET_RISE_MAIN:
 			if(key == KEY_D) {
-				rise_main = KeypadInt();
+				rise_main[vidx] = KeypadInt();
 				waitingForInput = 0;
 			} else {
 				setState(MAIN_SCREEN);
@@ -498,7 +521,7 @@ void nextState(void){
 			break;
 		case SET_INC_FM:
 			if(key == KEY_D) {
-				inc_fm1 = KeypadInt();
+				inc_fm1[vidx] = KeypadInt();
 				waitingForInput = 0;
 			} else {
 				setState(MAIN_SCREEN);
@@ -507,7 +530,7 @@ void nextState(void){
 			break;
 		case SET_DEPTH_FM:
 			if(key == KEY_D) {
-				depth_fm1 = KeypadInt();
+				depth_fm1[vidx] = KeypadInt();
 				waitingForInput = 0;
 			} else {
 				setState(MAIN_SCREEN);
@@ -516,7 +539,7 @@ void nextState(void){
 			break;
 		case SET_DECAY_FM:
 			if(key == KEY_D) {
-				decay_fm1 = KeypadInt();
+				decay_fm1[vidx] = KeypadInt();
 				waitingForInput = 0;
 			} else {
 				setState(MAIN_SCREEN);
