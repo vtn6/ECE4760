@@ -111,7 +111,9 @@ void KeypadAppend(uint8_t key) {
 
 // Execute this every 1ms
 void KeypadDebounce(void) {
-	debounceTime--;
+	if(debounceTime > 0) {
+		debounceTime--;
+	}
 	uint8_t key = KeypadScan(); //Scan the keypad
 	switch(keyState){
 	
@@ -137,15 +139,15 @@ void KeypadDebounce(void) {
 			if (key == 0){
 				keyState = MAYBERELEASED;
 				debounceTime = DEBOUNCE_TIME;
-				//curKey = 0;
 			}
 			break;
 		case MAYBERELEASED:
 			if (debounceTime == 0) {
-				if (key != 0) {
-					keyState = RELEASED;
-				} else {
+				if (key == 0) {
 					keyState = PUSHED;
+				} else {
+					keyState = RELEASED;
+					//curKey = 0;
 				}
 			}
 			break;
