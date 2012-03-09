@@ -50,7 +50,8 @@ int8_t fmDepthStrLen;
 int8_t fmDecayStrLen;
 int8_t voiceStrLen;
 
-#define NUM_VOICES 6
+//#define NUM_VOICES 6
+#define NUM_VOICES 4
 
 // The DDS variables 
 volatile unsigned int acc_main[NUM_VOICES], acc_fm1[NUM_VOICES] ;
@@ -127,8 +128,8 @@ volatile uint8_t voice;
 #define VOICE_2 1
 #define VOICE_3 2
 #define VOICE_4 3
-#define VOICE_5 4
-#define VOICE_6 5
+//#define VOICE_5 4
+//#define VOICE_6 5
 
 //constants for random number generation
 const uint8_t RND_MAX = 255;
@@ -186,7 +187,7 @@ uint8_t sample(uint8_t idx) {
 		// phase lock the synth
 		acc_fm1[idx] = 0 ;
 		acc_main[idx] = 0;
-		
+
 		//DIRTY UGLY HACK FIX THIS STUPID
 		if (idx == (NUM_VOICES - 1)) {
 			pluck = 0;
@@ -210,7 +211,7 @@ uint8_t sample(uint8_t idx) {
 	return 128 + (((amp_main[idx]>>8) * (int)sineTable[high_main])>>7) ;
 }
 
-ISR (TIMER1_COMPA_vect) // Fs = 8000
+ISR (TIMER1_COMPA_vect) // Fs = 12000
 { 
 	// turn on timer for profiling
 	//TCNT2 = 0; TCCR2B = 1;
@@ -219,18 +220,24 @@ ISR (TIMER1_COMPA_vect) // Fs = 8000
 	uint8_t idx;
 	uint8_t voiceAccum = 0;
 	for (idx=0; idx < NUM_VOICES; idx++){
-		voiceAccum += sample(idx);
+		voiceAccum += sample(idx) >> 2;
 	}
 	OCR0A = voiceAccum;
+	//OCR0A = sample(1);
 	
-	time++;     //ticks at 8 KHz 
+	time++;     //ticks at 12 KHz 
 	// profiling 
 	//TCCR2B = 0;
 } 
 
 // Every 1ms
+volatile uint16_t mscount = 0;
 ISR (TIMER2_COMPA_vect){
 	KeypadDebounce();
+	mscount++;
+	if(!(mscount % 1100)) {
+		pluck = 1;
+	}
 }
  
 /////////////////////////////////////////////////////
@@ -267,8 +274,9 @@ void Initialize(void){
 	TCCR0A = (1<<COM0A0) | (1<<COM0A1) | (1<<WGM00) | (1<<WGM01) ; 
 	OCR0A = 128 ; // set PWM to half full scale
 
-	// timer 1 ticks at 8000 Hz or 125 microsecs period=2000 ticks
-	OCR1A = 1999 ; // 2000 ticks
+	/////////// timer 1 ticks at 8000 Hz or 125 microsecs period=2000 ticks
+	// timer 1 ticks at 12000 Hz = 1333 ticks
+	OCR1A = 1332 ; // 2000 ticks
 	TIMSK1 = (1<<OCIE1A) ;
 	TCCR1B = 0x09; 	//full speed; clear-on-match
 	TCCR1A = 0x00;	//turn off pwm and oc lines
@@ -320,41 +328,45 @@ void Initialize(void){
 	// max value is 8
 	decay_fm1[0] = 6 ;
 
-/*
+//Chime:
+	inc_main[1] = (int)(8.192 * 261.0) ; 
+	decay_main[1] = 5 ;
+	rise_main[1] = 1 ;
+	inc_fm1[1] = (int)(8.192 * 350.0) ;
+	depth_fm1[1] = 9 ;
+	decay_fm1[1] = 5 ;
 
-Chime:
-   inc_main = (int)(8.192 * 261.0) ; 
-   decay_main = 5 ;
-   rise_main = 1 ;
-   inc_fm1 = (int)(8.192 * 350.0) ;
-   depth_fm1 = 9 ;
-   decay_fm1 = 5 ;
+//Plucked String:
+	inc_main[2] = (int)(8.192 * 500.0) ; 
+	decay_main[2] = 3 ;
+	rise_main[2] = 1 ;
+	inc_fm1[2] = (int)(8.192 * 750.0) ;
+	depth_fm1[2] = 8 ;
+	decay_fm1[2] = 3 ;
 
-Plucked String:
-	inc_main = (int)(8.192 * 500.0) ; 
-   decay_main = 3 ;
-   rise_main = 1 ;
-   inc_fm1 = (int)(8.192 * 750.0) ;
-   depth_fm1 = 8 ;
-   decay_fm1 = 3 ;
+//Small, stiff rod
+	inc_main[3] = (int)(8.192 * 1440) ;   
+	decay_main[3] = 3 ;
+	rise_main[3] = 1 ;   
+	inc_fm1[3] = (int)(8.192 * 50) ; // at 100 get stiff string; at 200 get hollow pipe
+	depth_fm1[3] = 10 ; //or 9
+	decay_fm1[3] = 5 ;
 
-Small, stiff rod
- 	inc_main = (int)(8.192 * 1440) ;   
-   decay_main = 3 ;
-   rise_main = 1 ;   
-   inc_fm1 = (int)(8.192 * 50) ; // at 100 get stiff string; at 200 get hollow pipe
-   depth_fm1 = 10 ; //or 9
-   decay_fm1 = 5 ;
+//Hollow rod
+/*	inc_main[4] = (int)(8.192 * 1440) ;   
+	decay_main[4] = 3 ;
+	rise_main[4] = 1 ;   
+	inc_fm1[4] = (int)(8.192 * 200) ; // at 100 get stiff string; at 200 get hollow pipe
+	depth_fm1[4] = 10 ; //or 9
+	decay_fm1[4] = 5 ;
 
-Bell/chime
-   inc_main = (int)(8.192 * 1440) ; 
-   decay_main = 5 ;
-   rise_main = 1 ;
-   inc_fm1 = (int)(8.192 * 600) ;
-   depth_fm1 = 8 ;
-   decay_fm1 = 6 ;
-
-*/
+//Bell
+	inc_main[5] = (int)(8.192 * 300) ; 
+	decay_main[5] = 5 ;
+	rise_main[5] = 0 ;
+	inc_fm1[5] = (int)(8.192 * 1000) ;
+	depth_fm1[5] = 8 ;
+	decay_fm1[5] = 6 ;*/
 }
   ////////////////////////////////////////////////////
 
