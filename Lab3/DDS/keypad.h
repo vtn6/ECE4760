@@ -5,23 +5,24 @@
 
 #include <inttypes.h>
 
-#define KEY_0 0x7d
-#define KEY_1 0xee
-#define KEY_2 0xed
-#define KEY_3 0xeb
-#define KEY_4 0xde
-#define KEY_5 0xdd
-#define KEY_6 0xdb
-#define KEY_7 0xbe
-#define KEY_8 0xbd
-#define KEY_9 0xbb
+#define KEY_0 14
+#define KEY_1 1
+#define KEY_2 2
+#define KEY_3 3
+#define KEY_4 5
+#define KEY_5 6
+#define KEY_6 7
+#define KEY_7 9
+#define KEY_8 10
+#define KEY_9 11
+#define KEY_S 13
+#define KEY_P 15
 
-#define KEY_A 0xe7
-#define KEY_B 0xd7
-#define KEY_C 0xb7
-#define KEY_D 0x77
-#define KEY_S 0x7e
-#define KEY_P 0x7b
+#define KEY_A 4
+#define KEY_B 8
+#define KEY_C 12
+#define KEY_D 16
+
 
 
 void KeypadDebounce(void);
