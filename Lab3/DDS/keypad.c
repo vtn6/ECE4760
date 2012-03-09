@@ -166,7 +166,7 @@ uint8_t KeypadKey(void) {
 
 
 // get pressed integer (delimited before and after by any non-integer)
-int KeypadInt(void) {
+unsigned int KeypadInt(void) {
 	return KeypadInput;
 }
 

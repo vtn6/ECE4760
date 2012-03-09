@@ -27,7 +27,7 @@
 
 void KeypadDebounce(void);
 uint8_t KeypadKey(void);
-int KeypadInt(void);
+unsigned int KeypadInt(void);
 uint8_t KeypadFin(void);
 
 #endif

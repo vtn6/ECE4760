@@ -32,23 +32,23 @@
 const uint8_t LCDHelloTop[] PROGMEM = "SYNTH v9001\0"; // Welcome Message
 const uint8_t LCDHelloBot[] PROGMEM = "PRESS # FOR HELP\0";
 const uint8_t LCDSequenceId[] PROGMEM = "SEQUENCE ID \0"; 
+const uint8_t LCDVoiceId[] PROGMEM = "VOICE ID \0"; 
 const uint8_t LCDMainFrequency[] PROGMEM = "MAIN FREQ \0";
 const uint8_t LCDMainDecay[] PROGMEM = "MAIN DECAY \0";
 const uint8_t LCDMainRise[] PROGMEM = "MAIN RISE \0";
 const uint8_t LCDFMFreq[] PROGMEM = "FM FREQ \0";
 const uint8_t LCDFMDepth[] PROGMEM = "FM DEPTH \0";
 const uint8_t LCDFMDecay[] PROGMEM = "FM DECAY \0";
-const uint8_t LCDVoice[] PROGMEM = "VOICE \0";
 
 //LCD String lengths
 int8_t seqStrLen;
+int8_t voiceStrLen;
 int8_t mainFreqStrLen;
 int8_t mainDecayStrLen;
 int8_t mainRiseStrLen;
 int8_t fmFreqStrLen;
 int8_t fmDepthStrLen;
 int8_t fmDecayStrLen;
-int8_t voiceStrLen;
 
 //#define NUM_VOICES 6
 #define NUM_VOICES 4
@@ -58,10 +58,10 @@ volatile unsigned int acc_main[NUM_VOICES], acc_fm1[NUM_VOICES] ;
 volatile unsigned char high_main, high_fm1, decay_fm1[NUM_VOICES], decay_main[NUM_VOICES], depth_fm1[NUM_VOICES], rise_main[NUM_VOICES];
 volatile unsigned int inc_main[NUM_VOICES], inc_fm1[NUM_VOICES], amp_main[NUM_VOICES], amp_fm1[NUM_VOICES];
 volatile unsigned int rise_phase_main[NUM_VOICES], amp_rise_main[NUM_VOICES], amp_fall_main[NUM_VOICES];
+volatile uint8_t sampling = 1; //set to 1 to start sampling
 
 
 volatile uint8_t maxDuration;
-volatile uint8_t voice;
 #define max_amp 32767
 // tables for DDS			
 signed char sineTable[256], fm1 ;
@@ -71,57 +71,68 @@ signed char sineTable[256], fm1 ;
 uint8_t curNote;
 const uint16_t markovFrequencies[8] = {262, 294, 330, 392, 440, 523, 587, 659};
  
-const uint8_t ascendingMarkov[64] = {0, 1, 0, 0, 0, 0, 0, 0,
-									 0, 0, 1, 0, 0, 0, 0, 0,
-									 0, 0, 0, 1, 0, 0, 0, 0,
-									 0, 0, 0, 0, 1, 0, 0, 0,
-									 0, 0, 0, 0, 0, 1, 0, 0,
-									 0, 0, 0, 0, 0, 0, 1, 0,
-									 1, 0, 0, 0, 0, 0, 0, 0};
+const uint8_t ascendingMarkov[64] = {0, 255, 0, 0, 0, 0, 0, 0,
+									 0, 0, 255, 0, 0, 0, 0, 0,
+									 0, 0, 0, 255, 0, 0, 0, 0,
+									 0, 0, 0, 0, 255, 0, 0, 0,
+									 0, 0, 0, 0, 0, 255, 0, 0,
+									 0, 0, 0, 0, 0, 0, 255, 0,
+									 255, 0, 0, 0, 0, 0, 0, 0};
 									 
-const uint8_t uniformMarkov[64] = {125, 125, 125, 125, 125, 125, 125, 125,
-								   125, 125, 125, 125, 125, 125, 125, 125,
-								   125, 125, 125, 125, 125, 125, 125, 125,
-								   125, 125, 125, 125, 125, 125, 125, 125,
-								   125, 125, 125, 125, 125, 125, 125, 125,
-								   125, 125, 125, 125, 125, 125, 125, 125,
-								   125, 125, 125, 125, 125, 125, 125, 125,
-								   125, 125, 125, 125, 125, 125, 125, 125};
-const uint8_t chaoticMarkov[64] = {55, 9, 9, 56, 26, 30, 27, 43,
-								   43, 46, 54, 21, 11, 40, 2, 38,
-								   19, 22, 9, 20, 64, 34, 47, 40,
-								   44, 39, 22, 16, 12, 40, 49, 33,
-								   22, 63, 20, 5, 34, 39, 57, 15,
-								   48, 29, 33, 47, 11, 23, 52, 12,
-								   23, 36, 52, 15, 21, 54, 26, 28,  
-								   28, 32, 16, 27, 61, 50, 38, 3};
+const uint8_t uniformMarkov[64] = {31, 63, 95, 127, 159, 191, 223, 255,
+								   31, 63, 95, 127, 159, 191, 223, 255,
+								   31, 63, 95, 127, 159, 191, 223, 255,
+								   31, 63, 95, 127, 159, 191, 223, 255,
+								   31, 63, 95, 127, 159, 191, 223, 255,
+								   31, 63, 95, 127, 159, 191, 223, 255,
+								   31, 63, 95, 127, 159, 191, 223, 255,
+								   31, 63, 95, 127, 159, 191, 223, 255};
+/*
+ 40, 30, 14, 29,  3, 50, 61, 28,
+ 45, 28,  9, 42, 47, 44, 27, 13,
+ 28, 20, 38, 40, 13, 24, 48, 43,
+ 61, 47,  6, 32, 27,  1, 24, 58,
+ 15, 42, 35, 23, 46, 22, 51, 22,
+  8, 58, 40, 11, 27, 32, 30, 50,
+  6, 50, 46, 32, 40, 15, 43, 24,
+  4, 63, 31, 17, 25, 13, 49, 54
+Cumulative is below
+*/
+const uint8_t chaoticMarkov[64] = {	 40, 70, 84,113,116,166,227,255,
+									 45, 73, 82,124,171,215,242,255,
+									 28, 48, 86,126,139,163,211,255,
+									 61,108,114,146,173,174,198,255,
+									 15, 57, 92,115,161,183,234,255,
+									  8, 66,106,117,144,176,206,255,
+									  6, 56,102,134,174,189,232,255,
+									  4, 67, 98,115,140,153,202,255  };
+
 	
-const uint8_t descendingMarkov[64] = {0, 0, 0, 0, 0, 0, 0, 1,
-									  1, 0, 0, 0, 0, 0, 0, 0,
-									  0, 1, 0, 0, 0, 0, 0, 0,
-									  0, 0, 1, 0, 0, 0, 0, 0,
-									  0, 0, 0, 1, 0, 0, 0, 0,
-									  0, 0, 0, 0, 1, 0, 0, 0,
-									  0, 0, 0, 0, 0, 1, 0, 0,
-									  0, 0, 0, 0, 0, 0, 1, 0}; 
+const uint8_t descendingMarkov[64] = {0, 0, 0, 0, 0, 0, 0, 255,
+									  255, 0, 0, 0, 0, 0, 0, 0,
+									  0, 255, 0, 0, 0, 0, 0, 0,
+									  0, 0, 255, 0, 0, 0, 0, 0,
+									  0, 0, 0, 255, 0, 0, 0, 0,
+									  0, 0, 0, 0, 255, 0, 0, 0,
+									  0, 0, 0, 0, 0, 255, 0, 0,
+									  0, 0, 0, 0, 0, 0, 255, 0}; 
+
+volatile uint8_t vidx = 0;
 
 //the sequencer id
-volatile uint8_t seqId;
+volatile uint8_t seqId = 0;
 
 //state variables
 volatile uint8_t state;
-volatile uint8_t voice;
-#define  INIT 0
-#define  MAIN_SCREEN 1
-#define  MAN 2
-#define  SET_SEQUENCE 3
-#define  SET_VIDX 4
-#define  SET_INC_MAIN 5
-#define  SET_DECAY_MAIN 6
-#define  SET_RISE_MAIN 7
-#define  SET_INC_FM 8
-#define  SET_DEPTH_FM 9
-#define  SET_DECAY_FM 10
+#define  MAIN_SCREEN 0
+#define  SET_VIDX 1
+#define  SET_SEQUENCE 2
+#define  SET_INC_MAIN 3
+#define  SET_DECAY_MAIN 4
+#define  SET_RISE_MAIN 5
+#define  SET_INC_FM 6
+#define  SET_DEPTH_FM 7
+#define  SET_DECAY_FM 8
 
 //voice IDs
 #define VOICE_1 0
@@ -130,6 +141,12 @@ volatile uint8_t voice;
 #define VOICE_4 3
 //#define VOICE_5 4
 //#define VOICE_6 5
+
+//Random Numer Generator stuff
+#define bit30 0x4000
+#define bit27 0x0800
+char bit0, bit1;
+unsigned long noiseGen = 412294;
 
 //constants for random number generation
 const uint8_t RND_MAX = 255;
@@ -160,6 +177,7 @@ void updateManual(void);
 void setState(uint8_t);
 void nextState(void);
 uint8_t sample(uint8_t);
+uint8_t random8Bits(void);
 
 //returns OCR0A
 uint8_t sample(uint8_t idx) {
@@ -180,6 +198,9 @@ uint8_t sample(uint8_t idx) {
 
 	// Init the synth
 	if (pluck==1) {
+		if(idx == 0) {
+			setNextNote();
+		}
 		amp_fall_main[idx] = max_amp; 
 		rise_phase_main[idx] = max_amp ;
 		amp_rise_main[idx] = 0 ;
@@ -215,15 +236,17 @@ ISR (TIMER1_COMPA_vect) // Fs = 12000
 { 
 	// turn on timer for profiling
 	//TCNT2 = 0; TCCR2B = 1;
-
-	// Set Sample
-	uint8_t idx;
-	uint8_t voiceAccum = 0;
-	for (idx=0; idx < NUM_VOICES; idx++){
-		voiceAccum += sample(idx) >> 2;
+	
+	if(sampling) {
+		// Set Sample
+		uint8_t idx;
+		uint8_t voiceAccum = 0;
+		for (idx=0; idx < NUM_VOICES; idx++){
+			voiceAccum += sample(idx) >> 2;
+		}
+		OCR0A = voiceAccum;
+		//OCR0A = sample(1);
 	}
-	OCR0A = voiceAccum;
-	//OCR0A = sample(1);
 	
 	time++;     //ticks at 12 KHz 
 	// profiling 
@@ -289,13 +312,13 @@ void Initialize(void){
 
 
 	seqStrLen = strlen(LCDSequenceId);
+	voiceStrLen = strlen(LCDVoiceId);
 	mainFreqStrLen = strlen(LCDMainFrequency);
 	mainDecayStrLen = strlen(LCDMainDecay);
 	mainRiseStrLen = strlen(LCDMainRise);
 	fmFreqStrLen = strlen(LCDFMFreq);
 	fmDepthStrLen = strlen(LCDFMDepth);
 	fmDecayStrLen = strlen(LCDFMDecay);
-	voiceStrLen = strlen(LCDVoice);
 
 	initLCD();
 
@@ -327,6 +350,14 @@ void Initialize(void){
 	// 8 implies tau of 256 cycles
 	// max value is 8
 	decay_fm1[0] = 6 ;
+
+//Bell/chime
+   inc_main[0] = (int)(8.192 * 1440) ; 
+   decay_main[0] = 5 ;
+   rise_main[0] = 1 ;
+   inc_fm1[0] = (int)(8.192 * 600) ;
+   depth_fm1[0] = 8 ;
+   decay_fm1[0] = 6 ;
 
 //Chime:
 	inc_main[1] = (int)(8.192 * 261.0) ; 
@@ -390,8 +421,11 @@ void updateLCD(void){
 			CopyStringtoLCD(LCDHelloTop, 0, 0);
 			CopyStringtoLCD(LCDHelloBot, 0, 1);
 			break;
-		case MAN:
-			updateManual();
+		case SET_VIDX:
+			CopyStringtoLCD(LCDVoiceId, 0, 1);
+			LCDGotoXY(voiceStrLen, 1);
+			sprintf(LCDBuffer, "%d", vidx);
+			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 		case SET_SEQUENCE:
 			CopyStringtoLCD(LCDSequenceId, 0, 1);
@@ -436,11 +470,21 @@ void updateLCD(void){
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 	}
-
+	/*
 	CopyStringtoLCD(LCDVoice, 0, 0);
 	LCDGotoXY(voiceStrLen, 0);
 	sprintf(LCDBuffer, "%d", voice);
 	LCDstring(LCDBuffer, 1);
+	*/
+}
+
+uint8_t random8Bits(void){
+	bit0 = (noiseGen & bit27) > 0;
+	bit1 = (noiseGen & bit30) > 0;
+	noiseGen <<= 1;
+	noiseGen += bit0 ^ bit1;
+	return noiseGen & 0x7f;
+
 }
 
 void updateManual(void){
@@ -448,117 +492,168 @@ void updateManual(void){
 }
 
 void setState(uint8_t s) {
+	sampling = 0; // disable sampling when switching states
 	state = s;
 	updateLCD();
+	sampling = (state == MAIN_SCREEN);
 }
 
 //set the next note to play
-void setNextNote(){
+void setNextNote(void){
+	uint8_t nextNote = 0;
+	uint8_t rnd = random8Bits();
+	uint8_t nextNoteFound = 0;
 	switch (seqId){
+		case 0:
+			while (!nextNoteFound){
+				if (rnd <= ascendingMarkov[curNote * 8 + nextNote]){
+					nextNoteFound = 1;
+				} else {
+					nextNote++;
+				}
+			}
+			break;
+
 		case 1:
-			inc_main[0] = markovFrequencies[curNote++ % NUM_NOTES];
+			while (!nextNoteFound){
+				if (rnd <= descendingMarkov[curNote * 8 + nextNote]){
+					nextNoteFound = 1;
+				} else {
+					nextNote++;
+				}
+			}
+			break;
+
+		case 2:
+			while (!nextNoteFound){
+				if (rnd <= uniformMarkov[curNote * 8 + nextNote]){
+					nextNoteFound = 1;
+				} else {
+					nextNote++;
+				}
+			}
+			break;
+		
+		case 3:
+			while (!nextNoteFound){
+				if (rnd <= chaoticMarkov[curNote * 8 + nextNote]){
+					nextNoteFound = 1;
+				} else {
+					nextNote++;
+				}
+			}
 			break;
 	}
-	//for some reason, doesn't like rand()
-	//uint8_t nextNote = (rand() % (RND_MAX - RND_MIN + 1)) + RND_MIN;
+	for(uint8_t i = 0; i < NUM_VOICES; i++) {
+		inc_main[i] = (int)(8.192 * markovFrequencies[nextNote]);
+	}
+	curNote = nextNote;
 }
 
 // update to next state if key is pressed
 uint8_t waitingForInput = 0;
-uint8_t vidx = 0;
+unsigned int lastInt = 0;
 void nextState(void){
 	if(waitingForInput) {
 		// output input to screen
+		unsigned int in = KeypadInt();
+		if(lastInt != in) {
+			LCDGotoXY(0, 0);
+			sprintf(LCDBuffer, "%d", in);
+			LCDstring(LCDBuffer, strlen(LCDBuffer));
+		}
 	}
 	uint8_t key = KeypadKey();
+	/*
 	if(key != 0) {
+		//LCDclr();
 		//_delay_ms(1000);
-		sprintf(LCDBuffer, "%d", key);
+		//sprintf(LCDBuffer, "%d", key);
 		//LCDGotoXY(0, 0);
-		LCDstring(LCDBuffer, strlen(LCDBuffer));
-	}
+		//LCDstring(LCDBuffer, strlen(LCDBuffer));
+	}*/
 	switch(key) {
-		case KEY_P:
-			setState(MAN);
-			break;
 		case KEY_A:
-			setState((state + 1) % 10);
+			waitingForInput = 0;
+			setState((state + 1) % 9);
 			break;
 	}
-	switch (state) {
-		case SET_SEQUENCE:
-			if(key == KEY_D) {
-				seqId = KeypadInt();
-				waitingForInput = 0;
-			} else {
-				setState(MAIN_SCREEN);
-				waitingForInput = 1;
-			}
-			break;
-		case SET_VIDX:
-			if(key == KEY_D) {
-				vidx = KeypadInt() % NUM_VOICES;
-				waitingForInput = 0;
-			} else {
-				setState(MAIN_SCREEN);
-				waitingForInput = 1;
-			}
-			break;
-		case SET_INC_MAIN:
-			if(key == KEY_D) {
-				inc_main[vidx] = KeypadInt();
-				waitingForInput = 0;
-			} else {
-				setState(MAIN_SCREEN);
-				waitingForInput = 1;
-			}
-			break;
-		case SET_DECAY_MAIN:
-			if(key == KEY_D) {
-				decay_main[vidx] = KeypadInt();
-				waitingForInput = 0;
-			} else {
-				setState(MAIN_SCREEN);
-				waitingForInput = 1;
-			}
-			break;
-		case SET_RISE_MAIN:
-			if(key == KEY_D) {
-				rise_main[vidx] = KeypadInt();
-				waitingForInput = 0;
-			} else {
-				setState(MAIN_SCREEN);
-				waitingForInput = 1;
-			}
-			break;
-		case SET_INC_FM:
-			if(key == KEY_D) {
-				inc_fm1[vidx] = KeypadInt();
-				waitingForInput = 0;
-			} else {
-				setState(MAIN_SCREEN);
-				waitingForInput = 1;
-			}
-			break;
-		case SET_DEPTH_FM:
-			if(key == KEY_D) {
-				depth_fm1[vidx] = KeypadInt();
-				waitingForInput = 0;
-			} else {
-				setState(MAIN_SCREEN);
-				waitingForInput = 1;
-			}
-			break;
-		case SET_DECAY_FM:
-			if(key == KEY_D) {
-				decay_fm1[vidx] = KeypadInt();
-				waitingForInput = 0;
-			} else {
-				setState(MAIN_SCREEN);
-				waitingForInput = 1;
-			}
-			break;
+	if(key) {
+		switch (state) {
+			case SET_VIDX:
+				if(key == KEY_D) {
+					vidx = KeypadInt() % NUM_VOICES;
+					waitingForInput = 0;
+					setState(MAIN_SCREEN);
+				} else {
+					waitingForInput = 1;
+				}
+				break;
+			case SET_SEQUENCE:
+				if(key == KEY_D) {
+					seqId = KeypadInt();
+					waitingForInput = 0;
+					setState(MAIN_SCREEN);
+				} else {
+					waitingForInput = 1;
+				}
+				break;
+			case SET_INC_MAIN:
+				if(key == KEY_D) {
+					inc_main[vidx] = KeypadInt();
+					waitingForInput = 0;
+					setState(MAIN_SCREEN);
+				} else {
+					waitingForInput = 1;
+				}
+				break;
+			case SET_DECAY_MAIN:
+				if(key == KEY_D) {
+					decay_main[vidx] = KeypadInt();
+					waitingForInput = 0;
+					setState(MAIN_SCREEN);
+				} else {
+					waitingForInput = 1;
+				}
+				break;
+			case SET_RISE_MAIN:
+				if(key == KEY_D) {
+					rise_main[vidx] = KeypadInt();
+					waitingForInput = 0;
+					setState(MAIN_SCREEN);
+				} else {
+					waitingForInput = 1;
+				}
+				break;
+			case SET_INC_FM:
+				if(key == KEY_D) {
+					inc_fm1[vidx] = KeypadInt();
+					waitingForInput = 0;
+					setState(MAIN_SCREEN);
+				} else {
+					waitingForInput = 1;
+				}
+				break;
+			case SET_DEPTH_FM:
+				if(key == KEY_D) {
+					depth_fm1[vidx] = KeypadInt();
+					waitingForInput = 0;
+					setState(MAIN_SCREEN);
+				} else {
+					waitingForInput = 1;
+				}
+				break;
+			case SET_DECAY_FM:
+				if(key == KEY_D) {
+					decay_fm1[vidx] = KeypadInt();
+					waitingForInput = 0;
+					setState(MAIN_SCREEN);
+				} else {
+					waitingForInput = 1;
+				}
+				break;
 		
+		}
 	}
 }
 /////////////////////////////////////////////////////
@@ -581,6 +676,7 @@ int main(void)
 		//	printf("%d\n\r", TCNT2);
 		}
 		*/
+		random8Bits();
 		nextState();
 
    } // while(1)
