@@ -470,12 +470,6 @@ void updateLCD(void){
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 			break;
 	}
-	/*
-	CopyStringtoLCD(LCDVoice, 0, 0);
-	LCDGotoXY(voiceStrLen, 0);
-	sprintf(LCDBuffer, "%d", voice);
-	LCDstring(LCDBuffer, 1);
-	*/
 }
 
 uint8_t random8Bits(void){
@@ -564,14 +558,7 @@ void nextState(void){
 		}
 	}
 	uint8_t key = KeypadKey();
-	/*
-	if(key != 0) {
-		//LCDclr();
-		//_delay_ms(1000);
-		//sprintf(LCDBuffer, "%d", key);
-		//LCDGotoXY(0, 0);
-		//LCDstring(LCDBuffer, strlen(LCDBuffer));
-	}*/
+
 	switch(key) {
 		case KEY_A:
 			waitingForInput = 0;
@@ -661,21 +648,7 @@ int main(void)
 { 
    Initialize();
    while(1) {  
-		// Check pushbutton to pluck string
-		// and oneshot it
-		//  
-		/*
-		if (!(time & 0xff)) {
-			if ((~PINC & 0x01) && !pushed) {
-				 pluck = 1;
-				 pushed = 1;
- 			}
-			if (!(~PINC & 0x01)  && pushed) {
-				pushed = 0;
-			}
-		//	printf("%d\n\r", TCNT2);
-		}
-		*/
+
 		random8Bits();
 		nextState();
 
@@ -683,62 +656,3 @@ int main(void)
 
 }  //} main
 ////////////////////////////////////////////////////////
-/*
-Examples:      
-
-Chime:
-   inc_main = (int)(8.192 * 261.0) ; 
-   decay_main = 5 ;
-   rise_main = 1 ;
-   inc_fm1 = (int)(8.192 * 350.0) ;
-   depth_fm1 = 9 ;
-   decay_fm1 = 5 ;
-
-Plucked String:
-	inc_main = (int)(8.192 * 500.0) ; 
-   decay_main = 3 ;
-   rise_main = 1 ;
-   inc_fm1 = (int)(8.192 * 750.0) ;
-   depth_fm1 = 8 ;
-   decay_fm1 = 3 ;
-
-Plucked String:
-   inc_main = (int)(8.192 * 600) ; 
-   decay_main = 5 ;
-   rise_main = 0 ;
-   inc_fm1 = (int)(8.192 * 150) ;
-   depth_fm1 = 8 ;
-   decay_fm1 = 6 ;
-
-Bowed string
-   inc_main = (int)(8.192 * 300) ;  
-   decay_main = 5 ;
-   rise_main = 4 ;
-   inc_fm1 = (int)(8.192 * 300) ;
-   depth_fm1 = 8 ;
-   decay_fm1 = 6 ;
-
-Small, stiff rod
- 	inc_main = (int)(8.192 * 1440) ;   
-   decay_main = 3 ;
-   rise_main = 1 ;   
-   inc_fm1 = (int)(8.192 * 50) ; // at 100 get stiff string; at 200 get hollow pipe
-   depth_fm1 = 10 ; //or 9
-   decay_fm1 = 5 ;
-
-Bell/chime
-   inc_main = (int)(8.192 * 1440) ; 
-   decay_main = 5 ;
-   rise_main = 1 ;
-   inc_fm1 = (int)(8.192 * 600) ;
-   depth_fm1 = 8 ;
-   decay_fm1 = 6 ;
-
-Bell
-   inc_main = (int)(8.192 * 300) ; 
-   decay_main = 5 ;
-   rise_main = 0 ;
-   inc_fm1 = (int)(8.192 * 1000) ;
-   depth_fm1 = 8 ;
-   decay_fm1 = 6 ;
-*/
