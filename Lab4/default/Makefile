@@ -1,11 +1,11 @@
 ###############################################################################
-# Makefile for the project DDS
+# Makefile for the project TachometerSC
 ###############################################################################
 
 ## General Flags
-PROJECT = DDS
+PROJECT = TachometerSC
 MCU = atmega644
-TARGET = DDS.elf
+TARGET = TachometerSC.elf
 CC = avr-gcc
 
 ## Options common to compile, link and assembly rules
@@ -13,7 +13,7 @@ COMMON = -mmcu=$(MCU)
 
 ## Compile options common for all C compilation units.
 CFLAGS = $(COMMON)
-CFLAGS += -Wall -gdwarf-2 -std=gnu99   -DF_CPU=16000000UL -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+CFLAGS += -Wall -gdwarf-2 -std=gnu99 -DF_CPU=16000000UL -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CFLAGS += -MD -MP -MT $(*F).o -MF dep/$(@F).d 
 
 ## Assembly specific flags
@@ -23,7 +23,7 @@ ASMFLAGS += -x assembler-with-cpp -Wa,-gdwarf2
 
 ## Linker flags
 LDFLAGS = $(COMMON)
-LDFLAGS +=  -Wl,-Map=DDS.map
+LDFLAGS +=  -Wl,-Map=TachometerSC.map
 
 
 ## Intel Hex file production flags
@@ -35,25 +35,16 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
 ## Objects that must be built in order to link
-OBJECTS = DDS.o keypad.o lcd_lib.o uart.o 
+OBJECTS = TachometerSC.o 
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
 
 ## Build
-all: $(TARGET) DDS.hex DDS.eep DDS.lss size
+all: $(TARGET) TachometerSC.hex TachometerSC.eep TachometerSC.lss size
 
 ## Compile
-DDS.o: ../DDS.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-keypad.o: ../keypad.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-lcd_lib.o: ../lcd_lib.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-uart.o: ../uart.c
+TachometerSC.o: ../TachometerSC.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link
@@ -76,7 +67,7 @@ size: ${TARGET}
 ## Clean target
 .PHONY: clean
 clean:
-	-rm -rf $(OBJECTS) DDS.elf dep/* DDS.hex DDS.eep DDS.lss DDS.map
+	-rm -rf $(OBJECTS) TachometerSC.elf dep/* TachometerSC.hex TachometerSC.eep TachometerSC.lss TachometerSC.map
 
 
 ## Other dependencies

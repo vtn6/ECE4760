@@ -50,6 +50,8 @@ int8_t fmFreqStrLen;
 int8_t fmDepthStrLen;
 int8_t fmDecayStrLen;
 
+volatile uint8_t showTime = 0;
+
 //#define NUM_VOICES 6
 #define NUM_VOICES 4
 
@@ -235,8 +237,7 @@ uint8_t sample(uint8_t idx) {
 ISR (TIMER1_COMPA_vect) // Fs = 12000
 { 
 	// turn on timer for profiling
-	//TCNT2 = 0; TCCR2B = 1;
-	
+	TCNT2 = 0; TCCR2B = 2;
 	if(sampling) {
 		// Set Sample
 		uint8_t idx;
@@ -250,13 +251,13 @@ ISR (TIMER1_COMPA_vect) // Fs = 12000
 	
 	time++;     //ticks at 12 KHz 
 	// profiling 
-	//TCCR2B = 0;
+	TCCR2B = 0;
 } 
 
 // Every 1ms
 volatile uint16_t mscount = 0;
 ISR (TIMER2_COMPA_vect){
-	KeypadDebounce();
+	//KeypadDebounce();
 	mscount++;
 	if(!(mscount % 1100)) {
 		pluck = 1;
@@ -556,14 +557,16 @@ unsigned int lastInt = 0;
 void nextState(void){
 	if(waitingForInput) {
 		// output input to screen
-		unsigned int in = KeypadInt();
+		//unsigned int in = KeypadInt();
+		unsigned int in = 0;
 		if(lastInt != in) {
 			LCDGotoXY(0, 0);
 			sprintf(LCDBuffer, "%d", in);
 			LCDstring(LCDBuffer, strlen(LCDBuffer));
 		}
 	}
-	uint8_t key = KeypadKey();
+//	uint8_t key = KeypadKey();
+	uint8_t key = 0;
 	/*
 	if(key != 0) {
 		//LCDclr();
@@ -676,8 +679,11 @@ int main(void)
 		//	printf("%d\n\r", TCNT2);
 		}
 		*/
-		random8Bits();
-		nextState();
+		//random8Bits();
+		//nextState();
+		sprintf(LCDBuffer, "%d", TCNT2 * 8);
+		LCDGotoXY(0,0);
+		LCDstring(LCDBuffer, strlen(LCDBuffer));
 
    } // while(1)
 
