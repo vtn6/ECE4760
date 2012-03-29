@@ -22,6 +22,9 @@
 #include <util/delay.h>
 #include <avr/sleep.h>
 #include <ctype.h>
+#include "lcd_lib.h"
+#include <avr/pgmspace.h>
+#include <string.h>
 //#include "trtQuery.c"
 
 
@@ -35,9 +38,12 @@
 // putchar and getchar are in uart.c
 FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 
-// semaphore to protect shared variable
-#define SEM_SHARED 3
-
+// semaphore to protect shared variables
+#define SEM_OMEGA_REF 3
+#define SEM_K_P 4
+#define SEM_K_I 5
+#define SEM_K_D 6
+#define SEM_OMEGA 7
 // the usual
 #define and &&
 #define or ||
@@ -52,19 +58,19 @@ uint8_t led;
 
 //shared variables
 //PID parameters
-float k_p;
-float k_i;
-float k_d;
+float k_p, k_i, k_d;
 
 //Reference speed
-float omegaRef;
+uint16_t omegaRef;
 
 //actual speed
-float omega; 
+uint16_t omega; 
 
 
 //function signatures
 void setParam(uint8_t, float); //Helper method for setting PID parameters
+void InitLCD(void);
+
 //PID Control Stuff...worry about this silt later
 // --- define task 1  ----------------------------------------
 void buttonComm(void* args) 
@@ -87,10 +93,10 @@ void buttonComm(void* args)
 		// latch on the corresponding LED
 		sw = ~PINB ;
 		// update shared leds
-		trtWait(SEM_SHARED) ;
-		led = led | sw ;
-		PORTC = ~led ;
-		trtSignal(SEM_SHARED);
+		//trtWait(SEM_SHARED) ;
+		//led = led | sw ;
+		//PORTC = ~led ;
+		//trtSignal(SEM_SHARED);
 		
 		// chessy debouncer
 		if (sw_state == 0 && sw!=0) // new button push?
@@ -124,11 +130,11 @@ void buttonComm(void* args)
 // --- define task 2  ----------------------------------------
 void serialComm(void* args) 
   {
-	uint8_t cmd0, cmd1, cmd2, cmd3;
-	float val0, val1, val2, val3;
-
-	uint8_t numParams;
-
+	//uint8_t cmd0, cmd1, cmd2, cmd3;
+	//float val0, val1, val2, val3;
+	//uint8_t numParams;
+	float  val;
+	uint8_t cmd;
 	while(1)
 	{
 		// commands:
@@ -140,18 +146,44 @@ void serialComm(void* args)
 		
 		fprintf(stdout, ">") ;
 		//numParams = fscanf(stdin, "%c %f %c %f %c %f %c %f", &cmd0, &val0, &cmd1, &val1, &cmd2, &val2, &cmd3, &val3) ;
-		int  valpoo;
-		fscanf(stdin, "%c %d", &cmd0, &valpoo);
-		//trtWait(SEM_STRING_DONE);
+		
+		fscanf(stdin, "%c %f", &cmd, &val);
+		trtWait(SEM_STRING_DONE);
 
-		if (cmd0 == 'a')
-			fprintf(stdout, "OCAML: %d\n", valpoo);
+		//if (cmd0 == 'a')
+		//	fprintf(stdout, "OCAML: %d\n", valpoo);
 
-		// update shared leds
-		//trtWait(SEM_SHARED);
+		//update the parameters
+		switch (cmd){
+			case 's':
+				trtWait(SEM_OMEGA_REF);
+				omegaRef = (int) val;
+				trtSignal(SEM_OMEGA_REF);
+				break;
+			case 'p':
+				trtWait(SEM_K_P);
+				k_p = val;
+				trtSignal(SEM_K_P);
+				break;
+			case 'i':
+				trtWait(SEM_K_I);
+				k_i = val;
+				trtSignal(SEM_K_I);
+				break;
+			case 'd':
+				trtWait(SEM_K_D);
+				k_d = val;
+				trtSignal(SEM_K_D);
+				break;
+			default:
+				fprintf(stdout, "Command not recognized");
+				break;
+		}
 		
 
 		/*
+		// update shared leds
+		trtWait(SEM_SHARED);
 		if (!(numParams % 2))
 			numParams >>= 1;
 		
@@ -212,19 +244,162 @@ void serialComm(void* args)
   }
 
 // --- spoiler ---------------------------------------
-void spoiler(void* args) 
+void displayParams(void* args) 
 {
+	//String constants
+	const int8_t LCDSpeed[] = "SPEED: \0";
+	const int8_t LCDRPM[] = "RPM\0";
+	const int8_t LCDZero[] = "0000\0";
+
+	//LCD locations
+	const uint8_t OMEGA_REF_LOC = 0;
+	const uint8_t K_P_LOC = 5;
+	const uint8_t K_I_LOC = 9;
+	const uint8_t K_D_LOC = 13;
+	const uint8_t OMEGA_LOC = 7;
+	const uint8_t RPM_LOC = 13;
+
+	//String lenghts
+	const uint8_t OMEGA_REF_LEN = 4;
+	const uint8_t OMEGA_LEN = 4;
+	const uint8_t K_P_LEN = 3;
+	const uint8_t K_I_LEN = 3;
+	const uint8_t K_D_LEN = 3;
+
+	//String buffers
+	int8_t LCDOmegaRef[4];
+	int8_t LCDOmega[4];
+	int8_t LCDk_p[3];
+	int8_t LCDk_i[3];
+	int8_t LCDk_d[3];
+
+	uint8_t updateOmegaRef;
+	uint8_t updatek_p;
+	uint8_t updatek_i;
+	uint8_t updatek_d;
+
+	trtWait(SEM_OMEGA_REF);
+	int localOmegaRef = omegaRef;
+	trtSignal(SEM_OMEGA_REF);
+
+	trtWait(SEM_K_P);
+	float localk_p = k_p;
+	trtSignal(SEM_K_P);
+
+	trtWait(SEM_K_I);
+	float localk_i = k_i;
+	trtSignal(SEM_K_I);
+
+	trtWait(SEM_K_D);
+	float localk_d = k_d;
+	trtSignal(SEM_K_D);
+
+
+	//initialize the LCD
+	InitLCD();
+	LCDGotoXY(0, 0);
+  	LCDstring(LCDSpeed, strlen(LCDSpeed));
+  	
+	LCDGotoXY(OMEGA_LOC, 0);
+	LCDstring(LCDZero, OMEGA_LEN);
+
+	LCDGotoXY(RPM_LOC, 0);
+	LCDstring(LCDRPM, strlen(LCDRPM));
+	
 	uint32_t rel, dead ;
-	//Ties up the kernel so that the button task runs 
-	// intermittantly UNLESS deadline-release>=delay time
+	//Update the LCD about 5 times a second
 	while(1)
 	{
-		_delay_ms(100);
+		//Check if the reference speed has changed
+		trtWait(SEM_OMEGA_REF);
+		if (localOmegaRef != omegaRef){
+			localOmegaRef = omegaRef;
+			updateOmegaRef = 1;
+		}
+		else{
+			updateOmegaRef = 0;
+		}
+		trtSignal(SEM_OMEGA_REF);
+
+		//Check if the proportional gain has changed
+		trtWait(SEM_K_P);
+		if (localk_p != k_p) {
+			localk_p = k_p;
+			updatek_p = 1;
+		}
+		else{
+			updatek_p = 0;
+		}
+		trtSignal(SEM_K_P);
+
+		//Check if the integral gain has changed
+		trtWait(SEM_K_I);
+		if (localk_i != k_i) {
+			localk_i = k_i;
+			updatek_i = 1;
+		}
+		else{
+			updatek_i = 0;
+		}
+		trtSignal(SEM_K_I);
+
+		//Check if the derivative gain has changed
+		trtWait(SEM_K_D);
+		if (localk_d != k_d) {
+			localk_d = k_d;
+			updatek_d = 1;	
+		}
+		else{
+			updatek_d = 0;
+		}
+		trtSignal(SEM_K_D);
+
+
+		//Update the LCD
+		if (updateOmegaRef){
+			sprintf(LCDOmegaRef, "%i", localOmegaRef);
+            LCDGotoXY(OMEGA_REF_LOC, 1);
+            LCDstring(LCDOmegaRef, OMEGA_REF_LEN);
+		}
+
+		if (updatek_p){
+			sprintf(LCDk_p, "%f", localk_p);
+            LCDGotoXY(K_P_LOC, 1);
+            LCDstring(LCDk_p, K_P_LEN);
+		}
+
+		if (updatek_i){
+			sprintf(LCDk_i, "%f", localk_i);
+            LCDGotoXY(K_I_LOC, 1);
+            LCDstring(LCDk_i, K_I_LEN);
+		}
+
+		if (updatek_d){
+			sprintf(LCDk_d, "%f", localk_d);
+            LCDGotoXY(K_D_LOC, 1);
+            LCDstring(LCDk_d, K_D_LEN);
+		}
+
+		trtWait(SEM_OMEGA);
+		sprintf(LCDOmega, "%i", omega);
+		LCDGotoXY(OMEGA_LOC, 0);
+		LCDstring(LCDOmega, OMEGA_LEN);
+		trtSignal(SEM_OMEGA);
+
 		rel = trtCurrentTime() + SECONDS2TICKS(0.1);
 		dead = trtCurrentTime() + SECONDS2TICKS(0.2);
 		trtSleepUntil(rel, dead);
 	}
 }
+
+// --- Initialize the LCD ----------------------------
+void InitLCD(void){
+  LCDinit();  //initialize the display
+  LCDcursorOFF();
+  LCDclr();        //clear the display
+  LCDGotoXY(0,0);
+}
+
 // --- Main Program ----------------------------------
 
 void setParam(uint8_t cmd, float val){
@@ -258,12 +433,15 @@ int main(void) {
   trtCreateSemaphore(SEM_STRING_DONE,0) ;  // user typed <enter>
   
   // variable protection
-  trtCreateSemaphore(SEM_SHARED, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
 
  // --- creat tasks  ----------------
-  trtCreateTask(buttonComm, 200, SECONDS2TICKS(0.05), SECONDS2TICKS(0.05), &(args[0]));
-  trtCreateTask(serialComm, 200, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
-  trtCreateTask(spoiler, 200, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
+  trtCreateTask(buttonComm, 256, SECONDS2TICKS(0.05), SECONDS2TICKS(0.05), &(args[0]));
+  trtCreateTask(serialComm, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
+  trtCreateTask(displayParams, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
   
   // --- Idle task --------------------------------------
   // just sleeps the cpu to save power 

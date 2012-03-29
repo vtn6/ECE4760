@@ -13,7 +13,7 @@ COMMON = -mmcu=$(MCU)
 
 ## Compile options common for all C compilation units.
 CFLAGS = $(COMMON)
-CFLAGS += -Wall -gdwarf-2 -std=gnu99 -DF_CPU=16000000UL -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+CFLAGS += -Wall -gdwarf-2 -std=gnu99     -DF_CPU=16000000UL -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CFLAGS += -MD -MP -MT $(*F).o -MF dep/$(@F).d 
 
 ## Assembly specific flags
@@ -23,7 +23,7 @@ ASMFLAGS += -x assembler-with-cpp -Wa,-gdwarf2
 
 ## Linker flags
 LDFLAGS = $(COMMON)
-LDFLAGS +=  -Wl,-Map=TachometerSC.map
+LDFLAGS +=  -Wl,-u,vfprintf -lprintf_flt -lm  -Wl,-u,vfscanf -lscanf_flt -lm  -Wl,-Map=TachometerSC.map
 
 
 ## Intel Hex file production flags
@@ -34,8 +34,11 @@ HEX_EEPROM_FLAGS += --set-section-flags=.eeprom="alloc,load"
 HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
+## Libraries
+LIBS = -lprintf_flt -lscanf_flt 
+
 ## Objects that must be built in order to link
-OBJECTS = TachometerSC.o 
+OBJECTS = TachometerSC.o lcd_lib.o 
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
@@ -45,6 +48,9 @@ all: $(TARGET) TachometerSC.hex TachometerSC.eep TachometerSC.lss size
 
 ## Compile
 TachometerSC.o: ../TachometerSC.c
+	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
+
+lcd_lib.o: ../lcd_lib.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link

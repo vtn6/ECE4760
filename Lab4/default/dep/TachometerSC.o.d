@@ -17,7 +17,9 @@ TachometerSC.o: ../TachometerSC.c ../trtSettings.h ../trtkernel644.c \
   c:/winavr-20100110/lib/gcc/../../avr/include/util/delay.h \
   c:/winavr-20100110/lib/gcc/../../avr/include/util/delay_basic.h \
   c:/winavr-20100110/lib/gcc/../../avr/include/avr/sleep.h \
-  c:/winavr-20100110/lib/gcc/../../avr/include/ctype.h ../trtUart.h \
+  c:/winavr-20100110/lib/gcc/../../avr/include/ctype.h ../lcd_lib.h \
+  c:/winavr-20100110/lib/gcc/../../avr/include/avr/pgmspace.h \
+  c:/winavr-20100110/lib/gcc/../../avr/include/string.h ../trtUart.h \
   ../trtUart.c ../trtuart.h
 
 ../trtSettings.h:
@@ -61,6 +63,12 @@ c:/winavr-20100110/lib/gcc/../../avr/include/util/delay_basic.h:
 c:/winavr-20100110/lib/gcc/../../avr/include/avr/sleep.h:
 
 c:/winavr-20100110/lib/gcc/../../avr/include/ctype.h:
+
+../lcd_lib.h:
+
+c:/winavr-20100110/lib/gcc/../../avr/include/avr/pgmspace.h:
+
+c:/winavr-20100110/lib/gcc/../../avr/include/string.h:
 
 ../trtUart.h:
 
