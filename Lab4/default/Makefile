@@ -23,7 +23,7 @@ ASMFLAGS += -x assembler-with-cpp -Wa,-gdwarf2
 
 ## Linker flags
 LDFLAGS = $(COMMON)
-LDFLAGS +=  -Wl,-u,vfprintf -lprintf_flt -lm  -Wl,-u,vfscanf -lscanf_flt -lm  -Wl,-Map=TachometerSC.map
+LDFLAGS += -Wl,-u,vfprintf -lprintf_flt -lm  -Wl,-u,vfscanf -lscanf_flt -lm -Wl,-Map=TachometerSC.map
 
 
 ## Intel Hex file production flags

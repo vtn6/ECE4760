@@ -58,68 +58,42 @@ uint8_t led;
 
 //shared variables
 //PID parameters
-float k_p, k_i, k_d;
+float k_p = 1.0, k_i = 1.0, k_d = 1.0;
 
 //Reference speed
-uint16_t omegaRef;
+uint16_t omegaRef = 1;
 
 //actual speed
-uint16_t omega; 
+uint16_t omega = 1; 
 
+//motor speed
+volatile int motor_period;
+volatile int motor_period_ovlf;
 
 //function signatures
 void setParam(uint8_t, float); //Helper method for setting PID parameters
 void InitLCD(void);
+
+// --- external interrupt ISR ------------------------
+ISR (INT0_vect) {
+        motor_period = TCNT2 + motor_period_ovlf  ;
+        TCNT2 = 0 ;
+        motor_period_ovlf = 0 ;
+}
+// --- set up extra 8 bits on timer 2 ----------------
+ISR (TIMER2_OVF_vect) {
+        motor_period_ovlf = motor_period_ovlf + 256 ;
+}
 
 //PID Control Stuff...worry about this silt later
 // --- define task 1  ----------------------------------------
 void buttonComm(void* args) 
   {	
   	uint32_t rel, dead ;
-	uint8_t sw, sw_num ;
-	uint8_t sw_state ;
-
-	sw_state = 0 ; // no buttons pushed
-	DDRC = 0xff;    // led connections
-  	PORTC = 0xff;
-	DDRA = 0x01 ;
 	
-
 	while(1)
 	{
-		PORTA =  PORTA ^ 0x01 ;
-		// read the buttons
-		// if a button is pushed,
-		// latch on the corresponding LED
-		sw = ~PINB ;
-		// update shared leds
-		//trtWait(SEM_SHARED) ;
-		//led = led | sw ;
-		//PORTC = ~led ;
-		//trtSignal(SEM_SHARED);
-		
-		// chessy debouncer
-		if (sw_state == 0 && sw!=0) // new button push?
-		{
-			// convert from binary to switch number (0 to 7)
-			sw_num = 0 ;
-			while(sw>1)
-			{
-				sw = sw>>1; 
-				sw_num++ ;
-			}
-			fprintf(stdout,"Button pushed=%d\n\r>", sw_num) ;
-			sw_state = 1 ;
-		}
-		if (sw_state == 1 && sw==0) // button release?
-		 	sw_state = 0 ;
-		// end debouncer
-
-		// Sleep
-		// debouncer works well with 50 mSec sleep
-		
-
-	    rel = trtCurrentTime() + SECONDS2TICKS(0.01);
+		rel = trtCurrentTime() + SECONDS2TICKS(0.01);
 	    dead = trtCurrentTime() + SECONDS2TICKS(0.01);
 	    trtSleepUntil(rel, dead);
 	}
@@ -147,99 +121,55 @@ void serialComm(void* args)
 		fprintf(stdout, ">") ;
 		//numParams = fscanf(stdin, "%c %f %c %f %c %f %c %f", &cmd0, &val0, &cmd1, &val1, &cmd2, &val2, &cmd3, &val3) ;
 		
-		fscanf(stdin, "%c %f", &cmd, &val);
-		trtWait(SEM_STRING_DONE);
-
-		//if (cmd0 == 'a')
-		//	fprintf(stdout, "OCAML: %d\n", valpoo);
+		fscanf(stdin, "%s%f", &cmd, &val);
+		//trtWait(SEM_STRING_DONE);
 
 		//update the parameters
-		switch (cmd){
-			case 's':
-				trtWait(SEM_OMEGA_REF);
-				omegaRef = (int) val;
-				trtSignal(SEM_OMEGA_REF);
-				break;
-			case 'p':
-				trtWait(SEM_K_P);
-				k_p = val;
-				trtSignal(SEM_K_P);
-				break;
-			case 'i':
-				trtWait(SEM_K_I);
-				k_i = val;
-				trtSignal(SEM_K_I);
-				break;
-			case 'd':
-				trtWait(SEM_K_D);
-				k_d = val;
-				trtSignal(SEM_K_D);
-				break;
-			default:
-				fprintf(stdout, "Command not recognized");
-				break;
-		}
-		
-
-		/*
-		// update shared leds
-		trtWait(SEM_SHARED);
-		if (!(numParams % 2))
-			numParams >>= 1;
-		
-		
-		//If the user only set 1 parameter double check that the command is
-		//valid and update the appropriate parameter
-		if (numParams == 1){
-			setParam(cmd0, val0);
-		}
-		
-		//If the user set 2 parameters ensure that both commands are recognized
-		//and that the user did not set the same parameter twice
-		else if (numParams == 2){
-			if (cmd0 != cmd1){
-				setParam(cmd0, val0);
-				setParam(cmd1, val1);
+		fprintf(stdout, "Cmd is %c\n", cmd);
+		fprintf(stdout, "Val is %f\n", val);
+		//if (strlen(cmd) != 1) {
+			if (val >= 0) {
+				switch (cmd){
+					case 's':
+						fprintf(stdout, "Starting - Setting speed\n");
+						trtWait(SEM_OMEGA_REF);
+						omegaRef = (int) val;
+						trtSignal(SEM_OMEGA_REF);
+						fprintf(stdout, "Ending - Setting speed\n");
+						break;
+					case 'p':
+						fprintf(stdout, "Starting - Setting p\n");
+						trtWait(SEM_K_P);
+						k_p = val;
+						trtSignal(SEM_K_P);
+						fprintf(stdout, "Ending - Setting p\n");
+						break;
+					case 'i':
+						fprintf(stdout, "Starting - Setting i\n");
+						trtWait(SEM_K_I);
+						k_i = val;
+						trtSignal(SEM_K_I);
+						fprintf(stdout, "Ending - Setting i\n");
+						break;
+					case 'd':
+						fprintf(stdout, "Starting - Setting d\n");
+						trtWait(SEM_K_D);
+						k_d = val;
+						trtSignal(SEM_K_D);
+						fprintf(stdout, "Ending - Setting d\n");
+						break;
+					default:
+						fprintf(stdout, "Command %c not recognized\n", cmd);
+						break;
+				}
 			}
-			else {
-				fprintf(stdout, "Cannot change the same parameter twice");
+			else{
+				fprintf(stdout, "Parameters must be non negative, %f is negative\n", val);
 			}
-		}
-
-		//If the user is a dumb sacK of shit and thinKs it's cool to set three
-		//parameters then we better maKe sure that he sets three difference,
-		//legal parameters
-		else if (numParams == 3){
-			if (cmd0 != cmd1 and cmd0 != cmd2 and cmd1 != cmd2){
-				setParam(cmd0, val0);
-				setParam(cmd1, val1);
-				setParam(cmd2, val2);
-			}
-			else {
-				fprintf(stdout, "Cannot change the same parameter twice\n");
-			}
-		}
-		//If the user is a cool Kid and sets all four parameters, then ensure
-		//that each parameter is set once and only once
-		else if (numParams == 4){
-			if (cmd0 != cmd1 and cmd0 != cmd2 and cmd0 != cmd3 and 
-				cmd1 != cmd2 and cmd1 != cmd3 and cmd2 != cmd3){
-				setParam(cmd0, val0);
-				setParam(cmd1, val1);
-				setParam(cmd2, val2);
-				setParam(cmd3, val3);
-			}
-			else {
-				fprintf(stdout, "Cannot change the same parameter twice\n");
-			}
-		}
-
-		//The user did something weird, let him Know
-		else {
-			fprintf(stdout, "Invalid number of arguments.\n");
-		}*/
-		//trtSignal(SEM_SHARED);
-		
+		//}
+		//else{
+		//	fprintf(stdout, "Command must be s, p, i, or d\n");
+		//}
 	}
   }
 
@@ -247,9 +177,8 @@ void serialComm(void* args)
 void displayParams(void* args) 
 {
 	//String constants
-	const int8_t LCDSpeed[] = "SPEED: \0";
-	const int8_t LCDRPM[] = "RPM\0";
-	const int8_t LCDZero[] = "0000\0";
+	const uint8_t LCDSpeed[9] = "SPEED: \0";
+	const uint8_t LCDRPM[5] = "RPM\0";
 
 	//LCD locations
 	const uint8_t OMEGA_REF_LOC = 0;
@@ -265,13 +194,15 @@ void displayParams(void* args)
 	const uint8_t K_P_LEN = 3;
 	const uint8_t K_I_LEN = 3;
 	const uint8_t K_D_LEN = 3;
+	const uint8_t SPEED_LEN = 7;
+	const uint8_t RPM_LEN = 3;
 
 	//String buffers
-	int8_t LCDOmegaRef[4];
-	int8_t LCDOmega[4];
-	int8_t LCDk_p[3];
-	int8_t LCDk_i[3];
-	int8_t LCDk_d[3];
+	uint8_t LCDOmegaRef[4];
+	uint8_t LCDOmega[4];
+	uint8_t LCDk_p[3];
+	uint8_t LCDk_i[3];
+	uint8_t LCDk_d[3];
 
 	uint8_t updateOmegaRef;
 	uint8_t updatek_p;
@@ -298,14 +229,31 @@ void displayParams(void* args)
 	//initialize the LCD
 	InitLCD();
 	LCDGotoXY(0, 0);
-  	LCDstring(LCDSpeed, strlen(LCDSpeed));
+  	LCDstring(LCDSpeed, SPEED_LEN);
   	
+	sprintf(LCDOmega, "%i", omega);
 	LCDGotoXY(OMEGA_LOC, 0);
-	LCDstring(LCDZero, OMEGA_LEN);
+	LCDstring(LCDOmega, OMEGA_LEN);
 
 	LCDGotoXY(RPM_LOC, 0);
-	LCDstring(LCDRPM, strlen(LCDRPM));
+	LCDstring(LCDRPM, RPM_LEN);
+
+	sprintf(LCDOmegaRef, "%i", localOmegaRef);
+    LCDGotoXY(OMEGA_REF_LOC, 1);
+    LCDstring(LCDOmegaRef, OMEGA_REF_LEN);
 	
+	sprintf(LCDk_p, "%f", localk_p);
+    LCDGotoXY(K_P_LOC, 1);
+    LCDstring(LCDk_p, K_P_LEN);
+
+	sprintf(LCDk_i, "%f", localk_i);
+    LCDGotoXY(K_I_LOC, 1);
+    LCDstring(LCDk_i, K_I_LEN);
+
+	sprintf(LCDk_d, "%f", localk_d);
+    LCDGotoXY(K_D_LOC, 1);
+    LCDstring(LCDk_d, K_D_LEN);
+
 	uint32_t rel, dead ;
 	//Update the LCD about 5 times a second
 	while(1)
@@ -387,7 +335,7 @@ void displayParams(void* args)
 		trtSignal(SEM_OMEGA);
 
 		rel = trtCurrentTime() + SECONDS2TICKS(0.1);
-		dead = trtCurrentTime() + SECONDS2TICKS(0.2);
+		dead = trtCurrentTime() + SECONDS2TICKS(0.225);
 		trtSleepUntil(rel, dead);
 	}
 }
@@ -401,21 +349,6 @@ void InitLCD(void){
 }
 
 // --- Main Program ----------------------------------
-
-void setParam(uint8_t cmd, float val){
-	cmd = tolower(cmd);
-	if (cmd == 's')
-		omegaRef = val;
-	else if (cmd == 'p')
-		k_p = val;		
-	else if (cmd == 'i')		
-		k_i = val;
-	else if (cmd == 'd')
-		k_d = val;
-	else
-		fprintf(stdout, "Command %c unrecognized\n", cmd);
-}
-
 int main(void) {
 
 
@@ -424,8 +357,17 @@ int main(void) {
   stdout = stdin = stderr = &uart_str;
   fprintf(stdout,"\n\r TRT 9feb2009\n\r\n\r");
   
+  //initialize Timer2 and the external interrupt
+  //set up INT0
+	EIMSK = 1<<INT0 ; // turn on int0
+	EICRA = 3 ;       // rising edge
+	// turn on timer 2 to be read in int0 ISR
+	TCCR2B = 7 ; // divide by 1024
+	// turn on timer 2 overflow ISR for double precision time
+	TIMSK2 = 1 ;
+
   // start TRT
-  trtInitKernel(80); // 80 bytes for the idle task stack
+  trtInitKernel(128); // 80 bytes for the idle task stack
 
   // --- create semaphores ----------
   // You must creat the first two semaphores if you use the uart
@@ -434,10 +376,10 @@ int main(void) {
   
   // variable protection
   trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
-
+  trtCreateSemaphore(SEM_OMEGA, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_K_P, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_K_I, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_K_D, 1) ; // protect shared variables
  // --- creat tasks  ----------------
   trtCreateTask(buttonComm, 256, SECONDS2TICKS(0.05), SECONDS2TICKS(0.05), &(args[0]));
   trtCreateTask(serialComm, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
