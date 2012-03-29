@@ -44,6 +44,7 @@ FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 #define SEM_K_I 5
 #define SEM_K_D 6
 #define SEM_OMEGA 7
+#define SEM_MAX_OUTPUT 8
 // the usual
 #define and &&
 #define or ||
@@ -62,6 +63,9 @@ float k_p = 1.0, k_i = 1.0, k_d = 1.0;
 
 //Reference speed
 uint16_t omegaRef = 1;
+
+//Max output
+uint16_t maxOutput = 9001;
 
 //actual speed
 uint16_t omega = 1; 
@@ -87,13 +91,91 @@ ISR (TIMER2_OVF_vect) {
 
 //PID Control Stuff...worry about this silt later
 // --- define task 1  ----------------------------------------
-void buttonComm(void* args) 
+void pidControl(void* args) 
   {	
   	uint32_t rel, dead ;
-	
+	uint16_t pError;
+	uint16_t prevPError;
+	uint16_t prevOmega;
+	uint8_t prevSign;
+	uint16_t localOmega;
+	uint16_t localOmegaRef;
+	uint8_t sign;
+	uint16_t derivative;
+	uint16_t output;
+	uint16_t localMaxOutput;
+	uint16_t integral;
+	float localk_p;
+	float localk_i;
+	float localk_d;
+
 	while(1)
 	{
-		rel = trtCurrentTime() + SECONDS2TICKS(0.01);
+		prevOmega = localOmega;
+		prevSign = sign;
+		localOmega = ((20000000 / 1024) / 7) / motor_period;
+
+		trtWait(SEM_OMEGA);
+		omega = localOmega;
+		trtSignal(SEM_OMEGA);
+
+		trtWait(SEM_OMEGA_REF);
+		localOmegaRef = omegaRef;
+		trtSignal(SEM_OMEGA_REF);
+
+		trtWait(SEM_K_P);
+		localk_p = k_p;
+		trtSignal(SEM_K_P);
+
+		trtWait(SEM_K_I);
+		localk_i = k_i;
+		trtSignal(SEM_K_I);
+
+		trtWait(SEM_K_D);
+		localk_d = k_d;
+		trtSignal(SEM_K_D);
+
+		trtWait(SEM_MAX_OUTPUT);
+		localMaxOutput = maxOutput;
+		trtSignal(SEM_MAX_OUTPUT);
+
+		//Proportional Error
+		pError = localOmegaRef - localOmega;
+
+		//Integral Error
+
+		//Get the current sign of the error
+		if (pError - prevPError > 0){
+			sign = 1;
+		}
+		else if (pError - prevPError < 0) {
+			sign = -1;
+		}
+		else {
+			sign = 0;
+		}
+
+		//Update the integral of the error
+		if (sign == prevSign){
+			integral += pError;
+		}
+		else{
+			integral = 0;
+		}
+
+		//Derivative Error
+		derivative = pError - prevPError;
+
+		output = localk_p * pError + localk_i * integral + localk_d * derivative;
+
+		if (output < 0){
+			OCR0A = 0;
+		}
+		else{
+			OCR0A = 255 * output / localMaxOutput;
+		}
+
+		rel = trtCurrentTime() + SECONDS2TICKS(0.005);
 	    dead = trtCurrentTime() + SECONDS2TICKS(0.01);
 	    trtSleepUntil(rel, dead);
 	}
@@ -109,6 +191,7 @@ void serialComm(void* args)
 	//uint8_t numParams;
 	float  val;
 	uint8_t cmd;
+
 	while(1)
 	{
 		// commands:
@@ -125,51 +208,38 @@ void serialComm(void* args)
 		//trtWait(SEM_STRING_DONE);
 
 		//update the parameters
-		fprintf(stdout, "Cmd is %c\n", cmd);
-		fprintf(stdout, "Val is %f\n", val);
-		//if (strlen(cmd) != 1) {
-			if (val >= 0) {
-				switch (cmd){
-					case 's':
-						fprintf(stdout, "Starting - Setting speed\n");
-						trtWait(SEM_OMEGA_REF);
-						omegaRef = (int) val;
-						trtSignal(SEM_OMEGA_REF);
-						fprintf(stdout, "Ending - Setting speed\n");
-						break;
-					case 'p':
-						fprintf(stdout, "Starting - Setting p\n");
-						trtWait(SEM_K_P);
-						k_p = val;
-						trtSignal(SEM_K_P);
-						fprintf(stdout, "Ending - Setting p\n");
-						break;
-					case 'i':
-						fprintf(stdout, "Starting - Setting i\n");
-						trtWait(SEM_K_I);
-						k_i = val;
-						trtSignal(SEM_K_I);
-						fprintf(stdout, "Ending - Setting i\n");
-						break;
-					case 'd':
-						fprintf(stdout, "Starting - Setting d\n");
-						trtWait(SEM_K_D);
-						k_d = val;
-						trtSignal(SEM_K_D);
-						fprintf(stdout, "Ending - Setting d\n");
-						break;
-					default:
-						fprintf(stdout, "Command %c not recognized\n", cmd);
-						break;
-				}
+		//fprintf(stdout, "Cmd is %c\n", cmd);
+		//fprintf(stdout, "Val is %f\n", val);
+		if (val >= 0) {
+			switch (cmd){
+				case 's':
+					trtWait(SEM_OMEGA_REF);
+					omegaRef = (int) val;
+					trtSignal(SEM_OMEGA_REF);
+					break;
+				case 'p':
+					trtWait(SEM_K_P);
+					k_p = val;
+					trtSignal(SEM_K_P);
+					break;
+				case 'i':
+					trtWait(SEM_K_I);
+					k_i = val;
+					trtSignal(SEM_K_I);
+					break;
+				case 'd':
+					trtWait(SEM_K_D);
+					k_d = val;
+					trtSignal(SEM_K_D);
+					break;
+				default:
+					fprintf(stdout, "Command %c not recognized\n", cmd);
+					break;
 			}
-			else{
-				fprintf(stdout, "Parameters must be non negative, %f is negative\n", val);
-			}
-		//}
-		//else{
-		//	fprintf(stdout, "Command must be s, p, i, or d\n");
-		//}
+		}
+		else{
+			fprintf(stdout, "Parameters must be non negative, %f is negative\n", val);
+		}
 	}
   }
 
@@ -196,6 +266,9 @@ void displayParams(void* args)
 	const uint8_t K_D_LEN = 3;
 	const uint8_t SPEED_LEN = 7;
 	const uint8_t RPM_LEN = 3;
+
+	uint8_t omegaRefLen;
+	uint8_t omegaLen;
 
 	//String buffers
 	uint8_t LCDOmegaRef[4];
@@ -233,14 +306,22 @@ void displayParams(void* args)
   	
 	sprintf(LCDOmega, "%i", omega);
 	LCDGotoXY(OMEGA_LOC, 0);
-	LCDstring(LCDOmega, OMEGA_LEN);
+	omegaLen = strlen(LCDOmega);
+	if (omegaLen >= OMEGA_LEN) {
+		omegaLen = OMEGA_LEN;
+	}
+	LCDstring(LCDOmega, omegaLen);
 
 	LCDGotoXY(RPM_LOC, 0);
 	LCDstring(LCDRPM, RPM_LEN);
 
 	sprintf(LCDOmegaRef, "%i", localOmegaRef);
+	omegaRefLen = strlen(LCDOmegaRef);
+	if (omegaRefLen >= OMEGA_REF_LEN) {
+		omegaRefLen = OMEGA_REF_LEN;
+	}
     LCDGotoXY(OMEGA_REF_LOC, 1);
-    LCDstring(LCDOmegaRef, OMEGA_REF_LEN);
+    LCDstring(LCDOmegaRef, omegaRefLen);
 	
 	sprintf(LCDk_p, "%f", localk_p);
     LCDGotoXY(K_P_LOC, 1);
@@ -306,8 +387,12 @@ void displayParams(void* args)
 		//Update the LCD
 		if (updateOmegaRef){
 			sprintf(LCDOmegaRef, "%i", localOmegaRef);
-            LCDGotoXY(OMEGA_REF_LOC, 1);
-            LCDstring(LCDOmegaRef, OMEGA_REF_LEN);
+			omegaRefLen = strlen(LCDOmegaRef);
+			if (omegaRefLen >= OMEGA_REF_LEN) {
+				omegaRefLen = OMEGA_REF_LEN;
+			}
+    		LCDGotoXY(OMEGA_REF_LOC, 1);
+	    	LCDstring(LCDOmegaRef, omegaRefLen);
 		}
 
 		if (updatek_p){
@@ -331,7 +416,11 @@ void displayParams(void* args)
 		trtWait(SEM_OMEGA);
 		sprintf(LCDOmega, "%i", omega);
 		LCDGotoXY(OMEGA_LOC, 0);
-		LCDstring(LCDOmega, OMEGA_LEN);
+		omegaLen = strlen(LCDOmega);
+		if (omegaLen >= OMEGA_LEN) {
+			omegaLen = OMEGA_LEN;
+		}
+		LCDstring(LCDOmega, omegaLen);
 		trtSignal(SEM_OMEGA);
 
 		rel = trtCurrentTime() + SECONDS2TICKS(0.1);
@@ -366,6 +455,16 @@ int main(void) {
 	// turn on timer 2 overflow ISR for double precision time
 	TIMSK2 = 1 ;
 
+  //setup Timer 0
+  // Set the timer for fast PWM mode, clear OC0A on Compare Match, set OC0A
+  // at BOTTOM (non-inverting mode)
+  TCCR0A = (1 << COM0A1) | (1 << WGM01) | (1 << WGM00); //Set the timer
+
+  //Set the prescalar to 64 so the PWM runs at less than 1000 Hz
+  TCCR0B = (1 << CS01) | (1 << CS00);
+
+  OCR0A = 127;
+
   // start TRT
   trtInitKernel(128); // 80 bytes for the idle task stack
 
@@ -381,7 +480,7 @@ int main(void) {
   trtCreateSemaphore(SEM_K_I, 1) ; // protect shared variables
   trtCreateSemaphore(SEM_K_D, 1) ; // protect shared variables
  // --- creat tasks  ----------------
-  trtCreateTask(buttonComm, 256, SECONDS2TICKS(0.05), SECONDS2TICKS(0.05), &(args[0]));
+  trtCreateTask(pidControl, 256, SECONDS2TICKS(0.05), SECONDS2TICKS(0.05), &(args[0]));
   trtCreateTask(serialComm, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
   trtCreateTask(displayParams, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
   
