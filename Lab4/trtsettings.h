@@ -3,7 +3,7 @@
 // include before trtkernel
 
 #define MAXNBRTASKS 4
-#define MAXNBRSEMAPHORES 7 // 3 sem (1-3) are needed for uart
+#define MAXNBRSEMAPHORES 8 // 3 sem (1-3) are needed for uart
 #define MAXNBRMUTEX 1
 
 #define PRESCALER 1024 // the actual value for timer1 prescalar

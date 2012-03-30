@@ -22,7 +22,7 @@
 #include <util/delay.h>
 #include <avr/sleep.h>
 #include <ctype.h>
-#include "lcd_lib.h"
+#include "lcd_lib.h"	
 #include <avr/pgmspace.h>
 #include <string.h>
 //#include "trtQuery.c"
@@ -44,7 +44,7 @@ FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 #define SEM_K_I 5
 #define SEM_K_D 6
 #define SEM_OMEGA 7
-#define SEM_MAX_OUTPUT 8
+
 // the usual
 #define and &&
 #define or ||
@@ -59,20 +59,17 @@ uint8_t led;
 
 //shared variables
 //PID parameters
-float k_p = 1.0, k_i = 1.0, k_d = 1.0;
+float k_p = 1.0, k_i = 0.0, k_d = 0.0;
 
 //Reference speed
-uint16_t omegaRef = 1;
-
-//Max output
-uint16_t maxOutput = 9001;
+uint16_t omegaRef = 1000;
 
 //actual speed
-uint16_t omega = 1; 
+uint16_t omega = 10; 
 
 //motor speed
-volatile int motor_period;
-volatile int motor_period_ovlf;
+volatile int motor_period = 0;
+volatile int motor_period_ovlf =0;
 
 //function signatures
 void setParam(uint8_t, float); //Helper method for setting PID parameters
@@ -80,7 +77,7 @@ void InitLCD(void);
 
 // --- external interrupt ISR ------------------------
 ISR (INT0_vect) {
-        motor_period = TCNT2 + motor_period_ovlf  ;
+        motor_period = TCNT2 + motor_period_ovlf;
         TCNT2 = 0 ;
         motor_period_ovlf = 0 ;
 }
@@ -94,29 +91,41 @@ ISR (TIMER2_OVF_vect) {
 void pidControl(void* args) 
   {	
   	uint32_t rel, dead ;
-	uint16_t pError;
-	uint16_t prevPError;
+	int16_t error;
+	int16_t prevError;
 	uint16_t prevOmega;
-	uint8_t prevSign;
+	int8_t prevSign;
 	uint16_t localOmega;
 	uint16_t localOmegaRef;
-	uint8_t sign;
-	uint16_t derivative;
-	uint16_t output;
-	uint16_t localMaxOutput;
-	uint16_t integral;
+	int8_t sign = 0;
+	int16_t derivative;
+	int16_t output;
+//	uint16_t maxOutput = 3000;
+//	uint16_t minOutput = 200;
+	int16_t integral;
 	float localk_p;
 	float localk_i;
 	float localk_d;
+	uint8_t first = 1;
 
+	DDRB = 0xff;
+	PORTB = 0;
 	while(1)
 	{
-		prevOmega = localOmega;
-		prevSign = sign;
-		localOmega = ((20000000 / 1024) / 7) / motor_period;
+		if (!first){
+			prevOmega = localOmega;
+			prevSign = sign;
+			prevError = error;
+		}
+		if (!motor_period) {
+			localOmega = 0;
+		}
+		else{
+			localOmega = (uint16_t) ((16000000.0 / 1024.0) / (float)motor_period * 60.0);
+		}
 
 		trtWait(SEM_OMEGA);
-		omega = localOmega;
+		omega = localOmega; 
 		trtSignal(SEM_OMEGA);
 
 		trtWait(SEM_OMEGA_REF);
@@ -135,48 +144,60 @@ void pidControl(void* args)
 		localk_d = k_d;
 		trtSignal(SEM_K_D);
 
-		trtWait(SEM_MAX_OUTPUT);
-		localMaxOutput = maxOutput;
-		trtSignal(SEM_MAX_OUTPUT);
-
 		//Proportional Error
-		pError = localOmegaRef - localOmega;
+		error = localOmegaRef - localOmega;
 
 		//Integral Error
 
 		//Get the current sign of the error
-		if (pError - prevPError > 0){
-			sign = 1;
+		if (!first) {
+			if (error - prevError > 0){
+				sign = 1;
+			}
+			else if (error - prevError < 0) {
+				sign = -1;
+			}
+			else {
+				sign = 0;
+			}
 		}
-		else if (pError - prevPError < 0) {
-			sign = -1;
-		}
-		else {
-			sign = 0;
-		}
-
+		
 		//Update the integral of the error
-		if (sign == prevSign){
-			integral += pError;
-		}
-		else{
-			integral = 0;
+		if (!first){
+			if (sign == prevSign){
+				integral += error;
+			}
+			else{
+				integral = 0;
+			}
 		}
 
 		//Derivative Error
-		derivative = pError - prevPError;
+		if (!first) {
+			derivative = error - prevError;
+		}
 
-		output = localk_p * pError + localk_i * integral + localk_d * derivative;
+		//determine what the output should be
+		if (!first){
+			output = localk_p * error + localk_i * integral + localk_d * derivative;
+		}
+		else{
+			output = localk_p * error;
+			first = 0;
+		}
 
 		if (output < 0){
 			OCR0A = 0;
 		}
-		else{
-			OCR0A = 255 * output / localMaxOutput;
+		else if (output > 255) {
+			OCR0A = 255;
+		}
+		else {
+			OCR0A = output;
 		}
 
-		rel = trtCurrentTime() + SECONDS2TICKS(0.005);
-	    dead = trtCurrentTime() + SECONDS2TICKS(0.01);
+		rel = trtCurrentTime() + SECONDS2TICKS(0.02);
+	    dead = trtCurrentTime() + SECONDS2TICKS(0.025);
 	    trtSleepUntil(rel, dead);
 	}
   }
@@ -269,6 +290,7 @@ void displayParams(void* args)
 
 	uint8_t omegaRefLen;
 	uint8_t omegaLen;
+	uint16_t localOmega;
 
 	//String buffers
 	uint8_t LCDOmegaRef[4];
@@ -386,7 +408,7 @@ void displayParams(void* args)
 
 		//Update the LCD
 		if (updateOmegaRef){
-			sprintf(LCDOmegaRef, "%i", localOmegaRef);
+			sprintf(LCDOmegaRef, "%i ", localOmegaRef);
 			omegaRefLen = strlen(LCDOmegaRef);
 			if (omegaRefLen >= OMEGA_REF_LEN) {
 				omegaRefLen = OMEGA_REF_LEN;
@@ -414,16 +436,15 @@ void displayParams(void* args)
 		}
 
 		trtWait(SEM_OMEGA);
-		sprintf(LCDOmega, "%i", omega);
+		localOmega = omega;
+		trtSignal(SEM_OMEGA);
+		sprintf(LCDOmega, "%i  ", localOmega);
 		LCDGotoXY(OMEGA_LOC, 0);
 		omegaLen = strlen(LCDOmega);
-		if (omegaLen >= OMEGA_LEN) {
-			omegaLen = OMEGA_LEN;
-		}
 		LCDstring(LCDOmega, omegaLen);
-		trtSignal(SEM_OMEGA);
+		
 
-		rel = trtCurrentTime() + SECONDS2TICKS(0.1);
+		rel = trtCurrentTime() + SECONDS2TICKS(0.2);
 		dead = trtCurrentTime() + SECONDS2TICKS(0.225);
 		trtSleepUntil(rel, dead);
 	}
@@ -440,7 +461,8 @@ void InitLCD(void){
 // --- Main Program ----------------------------------
 int main(void) {
 
-
+  DDRD = 0b11111011;
+  PORTD = 0;
   //init the UART -- trt_uart_init() is in trtUart.c
   trt_uart_init();
   stdout = stdin = stderr = &uart_str;
@@ -460,8 +482,8 @@ int main(void) {
   // at BOTTOM (non-inverting mode)
   TCCR0A = (1 << COM0A1) | (1 << WGM01) | (1 << WGM00); //Set the timer
 
-  //Set the prescalar to 64 so the PWM runs at less than 1000 Hz
-  TCCR0B = (1 << CS01) | (1 << CS00);
+  //Set the prescalar to 256 so the PWM runs at less than 1000 Hz
+  TCCR0B = (1 << CS02) | (1 << CS00);
 
   OCR0A = 127;
 
@@ -484,6 +506,7 @@ int main(void) {
   trtCreateTask(serialComm, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
   trtCreateTask(displayParams, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
   
+  sei();
   // --- Idle task --------------------------------------
   // just sleeps the cpu to save power 
   // every time it executes
