@@ -84,11 +84,11 @@ ISR (TIMER2_OVF_vect) {
 	motor_period_ovlf = motor_period_ovlf + 256 ;
 }
 
-//PID Control Stuff...worry about this silt later
+//PID Control Stuff
 // --- define task 1  ----------------------------------------
 void pidControl(void* args)
 {
-	uint32_t rel, dead ;
+	uint32_t rel, dead;
 	int16_t error;
 	int16_t prevError;
 	uint16_t prevOmega;
@@ -222,21 +222,25 @@ void serialComm(void* args)
 		//update the parameters
 		if (val >= 0) {
 			switch (cmd){
+			// set rpm
 			case 's':
 				trtWait(SEM_OMEGA_REF);
 				omegaRef = (int) val;
 				trtSignal(SEM_OMEGA_REF);
 				break;
+			// set p factor
 			case 'p':
 				trtWait(SEM_K_P);
 				k_p = val;
 				trtSignal(SEM_K_P);
 				break;
+			// set integral factor
 			case 'i':
 				trtWait(SEM_K_I);
 				k_i = val;
 				trtSignal(SEM_K_I);
 				break;
+			// set derivative factor
 			case 'd':
 				trtWait(SEM_K_D);
 				k_d = val;
@@ -449,7 +453,7 @@ void InitLCD(void){
 
 // --- Main Program ----------------------------------
 int main(void) {
-
+	//set external trigger
 	DDRD = 0b11111011;
 	PORTD = 0;
 	//init the UART -- trt_uart_init() is in trtUart.c
