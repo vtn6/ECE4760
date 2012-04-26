@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Sous-Vide Cooker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    
+    <!-- Le styles -->
+    <!--<link rel="stylesheet/less" href="less/bootstrap.less">
+      
+    <script src="js/less.js"></script>-->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <style>
+      body {
+      padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+      }
+      .carousel-inner .item {
+      max-height: 500px;
+      }
+    </style>
+    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    
+  </head>
+  
+  <body>
+    
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="#">Sous-Vide Cooker</a>
+          <div class="nav-collapse">
+            <ul class="nav">
+              <li class="active"><a href="#">Home</a></li>
+              <li><a href="#about">About</a></li>
+              <li><a href="#media">Media</a></li>
+              <li><a href="#contact">Contact</a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div>
+      </div>
+    </div>
+    
+    <div class="container">
+      <!-- Masthead
+      ================================================== -->
+      <header class="jumbotron subhead" id="overview">
+        <h1>Immersion Cooker</h1>
+        <p class="lead">An ATMEL based microcontroller powered auto-sensing immersion cooker (with bluetooth!)</p>
+      </header>
+      
+      <section id="about">
+        <div class="page-header">
+          <h1>About <small>What is this thing?</small></h1>
+        </div>
+        <div>
+          <p>
+            For our ECE4760 (Microcontrollers) Final Project at Cornell University we decided to create a sous-vide cooker. A sous-vide cooker is a type of immersion cooker, where food is placed in airtight bags and kept underwater for an extended period of time.
+          </p>
+          <div class="row">
+            <div class="span3">
+              <ul class="thumbnails">
+                <li class="span3">
+                  <div class="thumbnail">
+                    <img src="img/Beef-cooked-sous-vide-2.jpg" width="260px" alt>
+                    <div class="caption">Figure 1</div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="span9">
+              <p>Look at that delicious piece of steak! This was cooked using a sous-vide cooker. As you can see, the inside is perfectly rare like any rare cooked steak, but the outside is also perfectly rare! To give the steak a brown texture, it was seared after cooking. Sous-vide cooking also seals in the moisture of the meat while cooking, leading to juicy perfectly cooked steaks.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <section id="media">
+        <div class="page-header">
+          <h1>Media <small>What does this thing look like?</small></h1>
+        </div>        
+        <div class="tabbable">
+          <ul class="nav nav-tabs">
+            <li class="active"><a href="#photos" data-toggle="tab">Photos</a></li>
+            <li><a href="#videos" data-toggle="tab">Videos</a></li>
+          </ul>
+          <div class="tab-content">
+            <div class="tab-pane fade in active" id="photos">
+              <div id="myCarousel" class="carousel">
+                <div class="carousel-inner">
+                  <div class="active item">
+                    <img src="img/sous_vide_machine.jpg.scaled1000.jpg" width="100%" alt>
+                    <div class="carousel-caption">
+                      <h4>A commercial sous-vide cooker</h4>
+                    </div>
+                  </div>
+                  <div class="item">
+                    <img src="img/steak-sous-vide.jpg" width="100%" alt>
+                    <div class="carousel-caption">
+                      <h4>A picturesque sous-vide cooked steak</h4>
+                    </div>
+                  </div>
+                </div>
+                <a class="carousel-control left" href="#myCarousel" data-slide="prev">&lsaquo;</a>
+                <a class="carousel-control right" href="#myCarousel" data-slide="next">&rsaquo;</a>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="videos">
+              <h4>Coming Soon!</h4>
+            </div>
+            
+          </div>
+        </div>
+      </section>
+      
+      <section id="contact">
+        <div class="page-header">
+          <h1>Contact <small>How can I contact these wonderful people?</small></h1>
+        </div>
+        <div>
+          <p>You can contact us {Harrison Wong, David Diner} at {hcw29, dg386}@cornell.edu</p>
+        </div>
+      </section>
+      
+    </div> <!-- /container -->
+    
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script>
+      $('.carousel').carousel();
+    </script>
+    
+  </body>
+</html>
