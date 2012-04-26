@@ -40,6 +40,7 @@
             <ul class="nav">
               <li class="active"><a href="#overview">Home</a></li>
               <li><a href="#about">About</a></li>
+              <li><a href="#build">Build Log</a></li>
               <li><a href="#media">Media</a></li>
               <li><a href="#links">Interesting Links</a></li>
               <li><a href="#contact">Contact</a></li>
@@ -63,23 +64,37 @@
         </div>
         <div>
           <p>
-            For our ECE4760 (Microcontrollers) Final Project at Cornell University we decided to create a sous-vide cooker. A sous-vide cooker is a type of immersion cooker, where food is placed in airtight bags and kept underwater for an extended period of time.
+            For our ECE4760 (Microcontrollers) Final Project at Cornell University we decided to create a sous-vide cooker that can maintain a set temperature for extended periods of time. It also senses the amount of food placed inside to determine the optimal cooking time.
           </p>
           <div class="row">
-            <div class="span3">
-              <ul class="thumbnails">
-                <li class="span3">
-                  <div class="thumbnail">
-                    <img src="img/Beef-cooked-sous-vide-2.jpg" width="260px" alt>
-                    <div class="caption">Figure 1</div>
-                  </div>
-                </li>
-              </ul>
-            </div>
             <div class="span9">
-              <p>Look at that delicious piece of steak! This was cooked using a sous-vide cooker. As you can see, the inside is perfectly rare like any rare cooked steak, but the outside is also perfectly rare! To give the steak a brown texture, it was seared after cooking. Sous-vide cooking also seals in the moisture of the meat while cooking, leading to juicy perfectly cooked steaks.</p>
+              <p>
+                What is sous-vide? Simply put, it's a way of cooking food in airtight plastic bags under water for a long duration. This requires setting a temperature to keep the water constant at, to allow the food to reach a constant temperature very slowly.
+              </p>
+              <p>
+                Why go through all this trouble? Look at that delicious piece of steak! Normally when cooking meat, the outside cooks faster than the inside, as it reaches higher temperatures faster. Sous-vide cooking however, maintains a constant temperature to slowly cook the entire meat to the same temperature. This allows for relatively low cooking temperatures (140deg F) to make perfectly rare and safe meat. The extended period of time under this temperature kills bacteria just as well as a shorter amount of time at high temperatures, without damaging the outside of the meat. Sous-vide cooking also seals in the moisture of the meat while cooking, leading to juicier steaks.
+              </p>
+            </div>
+            <div class="span3">
+              <div class="thumbnail">
+                <img src="img/Beef-cooked-sous-vide-2.jpg" alt>
+                <div class="caption">
+                  A fully rare piece of steak
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section id="build">
+        <div class="page-header">
+          <h1>Build Log</h1>
+        </div>
+        <div>
+          <p>
+
+          </p>
         </div>
       </section>
 
@@ -94,7 +109,7 @@
           </ul>
           <div class="tab-content">
             <div class="tab-pane fade in active" id="photos">
-              <div id="myCarousel" class="carousel">
+              <div id="myCarousel" class="carousel slide">
                 <div class="carousel-inner">
                   <div class="active item">
                     <img src="img/sous_vide_machine.jpg.scaled1000.jpg" width="100%" alt>
