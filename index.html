@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <meta name="author" content="Harrison Wong, David Diner">
-    
+
     <!-- Le styles -->
     <!--<link rel="stylesheet/less" href="less/bootstrap.less">
-      
+
     <script src="js/less.js"></script>-->
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <style>
@@ -19,15 +19,19 @@
       .carousel-inner .item {
       max-height: 500px;
       }
+      p {
+      font-size: 1.2em;
+      margin-top: 1em;
+      }
     </style>
     <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
   </head>
-  
+
   <body>
-    
+
     <div id="navbar" class="navbar navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
@@ -37,21 +41,22 @@
               <li class="active"><a href="#overview">Home</a></li>
               <li><a href="#about">About</a></li>
               <li><a href="#media">Media</a></li>
+              <li><a href="#links">Interesting Links</a></li>
               <li><a href="#contact">Contact</a></li>
             </ul>
           </div><!--/.nav-collapse -->
         </div>
       </div>
     </div>
-    
+
     <div class="container">
       <!-- Masthead
       ================================================== -->
-      <header class="jumbotron subhead" id="overview">
+      <header class="hero-unit" id="overview">
         <h1>Immersion Cooker</h1>
         <p class="lead">An ATMEL based microcontroller powered auto-sensing immersion cooker (with bluetooth!)</p>
       </header>
-      
+
       <section id="about">
         <div class="page-header">
           <h1>About <small>What is this thing?</small></h1>
@@ -77,11 +82,11 @@
           </div>
         </div>
       </section>
-      
+
       <section id="media">
         <div class="page-header">
           <h1>Media <small>What does this thing look like?</small></h1>
-        </div>        
+        </div>
         <div class="tabbable">
           <ul class="nav nav-tabs">
             <li class="active"><a href="#photos" data-toggle="tab">Photos</a></li>
@@ -111,11 +116,22 @@
             <div class="tab-pane fade" id="videos">
               <h4>Coming Soon!</h4>
             </div>
-            
+
           </div>
         </div>
       </section>
-      
+
+      <section id="links">
+        <div class="page-header">
+          <h1>Interesting Links</h1>
+        </div>
+        <div>
+          <ul>
+            <li><a href="http://en.wikipedia.org/wiki/Sous-vide">Wikipedia - Sous-vide</a></li>
+          </ul>
+        </div>
+      </section>
+
       <section id="contact">
         <div class="page-header">
           <h1>Contact <small>How can I contact these wonderful people?</small></h1>
@@ -124,9 +140,9 @@
           <p>You can contact us {Harrison Wong, David Diner} at {hcw29, dg386}@cornell.edu</p>
         </div>
       </section>
-      
+
     </div> <!-- /container -->
-    
+
     <!-- Le javascript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
@@ -136,6 +152,6 @@
       $('.carousel').carousel();
       $("body").scrollspy({ target: "#navbar" });
     </script>
-    
+
   </body>
 </html>
