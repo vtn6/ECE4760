@@ -1,0 +1,24 @@
+body {
+  padding-top: 60px;
+}
+#carousel-parts .item {
+  height: 500px;
+  background-color: #fff;
+}
+#carousel-pictures .item {
+  height: 500px;
+}
+p {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+#table-parts {
+  font-size: 1.2em;
+}
+#table-parts tfoot {
+  color: white;
+  background-color: #33b5e5;
+}
+#table-parts tr td:first-child, #table-parts tr th:first-child {
+  text-align: right;
+}

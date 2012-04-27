@@ -12,18 +12,8 @@
 
     <script src="js/less.js"></script>-->
     <link rel="stylesheet" href="css/bootstrap.min.css">
-    <style>
-      body {
-      padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
-      }
-      .carousel-inner .item {
-      max-height: 500px;
-      }
-      p {
-      font-size: 1.2em;
-      margin-top: 1em;
-      }
-    </style>
+    <link rel="stylesheet" href="css/prettify.css">
+    <link rel="stylesheet" href="css/other.css">
     <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
@@ -35,12 +25,14 @@
     <div id="navbar" class="navbar navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
-          <a class="brand" href="#">Sous-Vide Cooker</a>
           <div class="nav-collapse">
             <ul class="nav">
-              <li class="active"><a href="#overview">Home</a></li>
+              <li class="active"><a href="#overview">Immersion Cooker</a></li>
               <li><a href="#about">About</a></li>
+              <li><a href="#parts">Parts List</a></li>
               <li><a href="#build">Build Log</a></li>
+              <li><a href="#documentation">Documentation</a></li>
+              <li><a href="#results">Results</a></li>
               <li><a href="#media">Media</a></li>
               <li><a href="#links">Interesting Links</a></li>
               <li><a href="#contact">Contact</a></li>
@@ -64,7 +56,7 @@
         </div>
         <div>
           <p>
-            For our ECE4760 (Microcontrollers) Final Project at Cornell University we decided to create a sous-vide cooker that can maintain a set temperature for extended periods of time. It also senses the amount of food placed inside to determine the optimal cooking time.
+            For our ECE4760 Spring 2012 (Microcontrollers) Final Project at Cornell University we decided to create a sous-vide cooker that can maintain a set temperature for extended periods of time. It also senses the amount of food placed inside to determine the optimal cooking time.
           </p>
           <div class="row">
             <div class="span9">
@@ -79,9 +71,134 @@
               <div class="thumbnail">
                 <img src="img/Beef-cooked-sous-vide-2.jpg" alt>
                 <div class="caption">
-                  A fully rare piece of steak
+                  <h4>A fully rare piece of steak</h4>
                 </div>
               </div>
+            </div>
+          </div>
+          <p>
+            So why make a sous-vide cooker ourselves? What makes our cooker different? We were able to create our cooker for under $75, which is in stark contrast to the $300 sous-vide cookers for home use. Just a sous-vide controller itself costs $150, not including a heating unit. Moreover, we implement advanced features, such as a water level monitor, as well as a automatic timer that can set cooking times depending on the quantity of food cooking.
+          </p>
+        </div>
+      </section>
+
+      <section id="parts">
+        <div class="page-header">
+          <h1>Parts List</h1>
+        </div>
+        <div class="row">
+          <div class="span5">
+            <table id="table-parts" class="table table-striped table-condensed" style="font-size:1.2em">
+              <thead>
+                <tr><th>Cost</th><th>Part</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>$6.97</td><td>Styrofoam Cooler</td></tr>
+                <tr><td>$8.21</td><td>Aquarium Pump</td></tr>
+                <tr><td>$7.05</td><td>Immersion Heater</td></tr>
+                <tr><td>$8.99</td><td>2-Channel Relay Module</td></tr>
+                <tr><td>$0.98</td><td>2-Gang Electrical Box</td></tr>
+                <tr><td>$0.74</td><td>Combination Wall Plate</td></tr>
+                <tr><td>$0.59</td><td>Duplex Electrical Outlet</td></tr>
+                <tr><td>$0.69</td><td>Single Pole Switch</td></tr>
+
+                <tr><td>$6.00</td><td>Mega644</td></tr>
+                <tr><td>$4.00</td><td>PC Board</td></tr>
+                <tr><td>$2.00</td><td>9V Battery</td></tr>
+                <tr><td>$8.00</td><td>LCD Display</td></tr>
+                <tr><td>$6.00</td><td>Keypad</td></tr>
+                <tr><td>$1.62</td><td>Piezo Buzzer</td></tr>
+              </tbody>
+              <tfoot>
+                <tr><th>$61.84</th><th>Total</th></tr>
+              </tfoot>
+            </table>
+            <p>Our goal was to keep the total parts under $75. We didn't have to scavange anything to keep this goal.</p>
+          </div>
+          <div class="span7">
+            <div id="carousel-parts" class="carousel slide">
+              <div class="carousel-inner">
+                <div class="active item">
+                  <img src="img/parts/heater.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>Immersion Heater</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/pump.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>Aquarium Pump</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/relay.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>2-Channel Relay Module</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/cooler.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>Styrofoam Cooler</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/electricalbox.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>2-Gang Electrical Box</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/outlet.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>Duplex Electrical Outlet</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/switch.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>Single Pole Switch</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/mega644.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>Mega644</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/board.png" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>PC Board</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/battery.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>9V Battery</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/lcd.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>LCD</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/keypad.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>Keypad</h4>
+                  </div>
+                </div>
+                <div class="item">
+                  <img src="img/parts/piezo.jpg" width="100%" alt>
+                  <div class="carousel-caption">
+                    <h4>Piezo</h4>
+                  </div>
+                </div>
+              </div>
+              <a class="carousel-control left" href="#carousel-parts" data-slide="prev">&lsaquo;</a>
+              <a class="carousel-control right" href="#carousel-parts" data-slide="next">&rsaquo;</a>
             </div>
           </div>
         </div>
@@ -89,7 +206,62 @@
 
       <section id="build">
         <div class="page-header">
-          <h1>Build Log</h1>
+          <h1>Build Log <small>How did you make this thing?</small></h1>
+        </div>
+
+
+        <h2>Hardware</h2>
+        <p>
+          First thing we did was buy the parts we needed. We used a few places to source the parts, with links to the shops in the "Interesting Links" section. When buying parts, we usually opted for the cheapest solution, as we did not feel we would need extra performance for this application.
+        </p>
+        <div class="row">
+          <p class="span6">
+            We assembled the PC Board with the Mega644 by careful soldering.
+          </p>
+          INSERT BOARD PIC HERE
+        </div>
+        <div class="row">
+          <p class="span6">
+            The most complicated module after the PC Board is the power module. We assembled the power module using the relay module, electrical box, electrical outlet, single pole switch and wall plate. We decided to use a plastic electrical box for safety reasons since it will not be mounted in a wall. We added the switch as a safety shut off. The relay operates off of 5V signals that are fed from the PC board into the box. The box also has a 110V input plug to connect to a wall socket. We are then able to plug the immersion heater and aquarium pump into the box and controll them independently using the microcontroller.
+          </p>
+          INSERT POWER MODULE PIC HERE
+        </div>
+        <div class="row">
+          <p class="span6">
+            We also assembled a board to wire the LCD, keypad and piezo to the PC Board. This gets mounted on the outside of the outside of the box to allow a user to interface with the cooker. Here it displays the temperature of the water inside, along with the target temperature and a timer. This can be set by using the keypad, and the piezo sounds an alarm when finished.
+          </p>
+          INSERT INTERFACE MODULE PIC HERE
+        </div>
+        <div class="row">
+          <p class="span6">
+            We use a IC temperature sensor to keep track of the water temperature in the box. The LM35 we use has a 0.5&deg;C accuracy range to allow for precise temperature measurement. We waterproofed the temperature sensor by putting heat shrink around it and sealing it. We feel that the slight loss in conductivity from the heat shrink is acceptable when considering the specific heat and quantity of water. We placed the completed temperature probe in the box near the water pump to ensure that it is exposed to temperature differences relatively quickly.
+          </p>
+          INSERT PROBE PIC HERE
+        </div>
+
+        <h2>Software</h2>
+        <p>
+          Our microcontroller of choice is the Atmel mega644. It is an 8-bit microcontroller with an abundance of i/o ports and easily programmable using C.
+        </p>
+        <div class="row">
+          <div class="span6">
+            <p>Explanation of code</p>
+          </div>
+          <div class="span6">
+            <pre class="prettyprint linenums lang-c">int example = "example c code";</pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="documentation">
+        <div class="page-header">
+          <h1>Documentation <small>How do I use this thing?</small></h1>
+        </div>
+      </section>
+
+      <section id="results">
+        <div class="page-header">
+          <h1>Results <small>How does it perform?</small></h1>
         </div>
         <div>
           <p>
@@ -109,7 +281,7 @@
           </ul>
           <div class="tab-content">
             <div class="tab-pane fade in active" id="photos">
-              <div id="myCarousel" class="carousel slide">
+              <div id="carousel-pictures" class="carousel slide">
                 <div class="carousel-inner">
                   <div class="active item">
                     <img src="img/sous_vide_machine.jpg.scaled1000.jpg" width="100%" alt>
@@ -124,8 +296,8 @@
                     </div>
                   </div>
                 </div>
-                <a class="carousel-control left" href="#myCarousel" data-slide="prev">&lsaquo;</a>
-                <a class="carousel-control right" href="#myCarousel" data-slide="next">&rsaquo;</a>
+                <a class="carousel-control left" href="#carousel-pictures" data-slide="prev">&lsaquo;</a>
+                <a class="carousel-control right" href="#carousel-pictures" data-slide="next">&rsaquo;</a>
               </div>
             </div>
             <div class="tab-pane fade" id="videos">
@@ -140,10 +312,39 @@
         <div class="page-header">
           <h1>Interesting Links</h1>
         </div>
-        <div>
-          <ul>
-            <li><a href="http://en.wikipedia.org/wiki/Sous-vide">Wikipedia - Sous-vide</a></li>
-          </ul>
+        <div class="row">
+          <div class="span3">
+            <h3>Project Resources</h3>
+            <ul class="unstyled">
+              <li><a href="https://github.com/HarrisonW/ECE4760">Source Code (github)</a></li>
+              <li><a href="">Schematic</a></li>
+              <li><a href="http://www.digikey.com/">Digikey</a></li>
+              <li><a href="http://www.sainsmart.com">SainSmart</a></li>
+              <li><a href="http://www.amazon.com/">Amazon</a></li>
+              <li><a href="http://www.lowes.com/">Lowe's</a></li>
+            </ul>
+          </div>
+          <div class="span3">
+            <h3>Datasheets</h3>
+            <ul class="unstyled">
+              <li><a href="http://www.atmel.com/Images/doc2593.pdf">ATmega644</a></li>
+              <li><a href="http://www.thesunrain.com/Amazon/2%20relay%20board/2-ch%20relay%20module.pdf">SainSmart 2-Channel Relay Module</a></li>
+              <li><a href="http://www.sainsmart.com/module/acceleromete/ultrasonic-ranging-detector-mod-hc-sr04-distance-sensor.html">SainSmart Ultrasonic Ranging Module</a></li>
+              <li><a href=""></a></li>
+            </ul>
+          </div>
+          <div class="span3">
+            <h3>Background Information</h3>
+            <ul class="unstyled">
+              <li><a href="http://en.wikipedia.org/wiki/Sous-vide">Wikipedia - Sous-vide</a></li>
+              <li><a href="http://www.seriouseats.com/2010/03/how-to-sous-vide-steak.html">SeriousEats - Sous-vide Primer</a></li>
+            </ul>
+          </div>
+          <div class="span3">
+            <h3>Other</h3>
+            <ul>
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -153,6 +354,8 @@
         </div>
         <div>
           <p>You can contact us {Harrison Wong, David Diner} at {hcw29, dg386}@cornell.edu</p>
+          <p>You can view our Professor, Bruce Land's <a href="http://people.ece.cornell.edu/land/">website</a></p>
+          <p>You can view our class (ECE4760) <a href="http://people.ece.cornell.edu/land/courses/ece4760/">website</a></p>
         </div>
       </section>
 
@@ -163,9 +366,13 @@
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="js/jquery.min.js"></script>
     <script src="js/bootstrap.min.js"></script>
+    <script src="js/prettify/prettify.js"></script>
     <script>
-      $('.carousel').carousel();
-      $("body").scrollspy({ target: "#navbar" });
+      $(function(){
+        $('.carousel').carousel();
+        $("body").scrollspy({ target: "#navbar" });
+        window.prettyPrint && prettyPrint()
+      });
     </script>
 
   </body>
