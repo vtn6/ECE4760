@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <meta name="author" content="Harrison Wong, David Diner">
-
+    
     <!-- Le styles -->
     <!--<link rel="stylesheet/less" href="less/bootstrap.less">
-
+      
     <script src="js/less.js"></script>-->
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/prettify.css">
@@ -19,9 +19,9 @@
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
   </head>
-
+  
   <body>
-
+    
     <div id="navbar" class="navbar navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
@@ -29,7 +29,8 @@
             <ul class="nav">
               <li class="active"><a href="#overview">Immersion Cooker</a></li>
               <li><a href="#about">About</a></li>
-              <li><a href="#parts">Parts List</a></li>
+              <li><a href="#high-level">Design</a></li>
+              <li><a href="#parts">Parts</a></li>
               <li><a href="#build">Build Log</a></li>
               <li><a href="#documentation">Documentation</a></li>
               <li><a href="#results">Results</a></li>
@@ -41,7 +42,7 @@
         </div>
       </div>
     </div>
-
+    
     <div class="container">
       <!-- Masthead
       ================================================== -->
@@ -49,14 +50,14 @@
         <h1>Immersion Cooker</h1>
         <p class="lead">An ATMEL based microcontroller powered auto-sensing immersion cooker (with bluetooth!)</p>
       </header>
-
+      
       <section id="about">
         <div class="page-header">
           <h1>About <small>What is this thing?</small></h1>
         </div>
         <div>
           <p>
-            For our ECE4760 Spring 2012 (Microcontrollers) Final Project at Cornell University we decided to create a sous-vide cooker that can maintain a set temperature for extended periods of time. It also senses the amount of food placed inside to determine the optimal cooking time.
+            For our ECE4760 Spring 2012 (Microcontrollers) Final Project at Cornell University we decided to create a sous-vide cooker (a type of immersion cooker) that can maintain a set temperature for extended periods of time. It also senses the amount of food placed inside to determine the optimal cooking time.
           </p>
           <div class="row">
             <div class="span9">
@@ -64,7 +65,7 @@
                 What is sous-vide? Simply put, it's a way of cooking food in airtight plastic bags under water for a long duration. This requires setting a temperature to keep the water constant at, to allow the food to reach a constant temperature very slowly.
               </p>
               <p>
-                Why go through all this trouble? Look at that delicious piece of steak! Normally when cooking meat, the outside cooks faster than the inside, as it reaches higher temperatures faster. Sous-vide cooking however, maintains a constant temperature to slowly cook the entire meat to the same temperature. This allows for relatively low cooking temperatures (140deg F) to make perfectly rare and safe meat. The extended period of time under this temperature kills bacteria just as well as a shorter amount of time at high temperatures, without damaging the outside of the meat. Sous-vide cooking also seals in the moisture of the meat while cooking, leading to juicier steaks.
+                Why go through all this trouble? Look at that delicious piece of steak! Normally when cooking meat, the outside cooks faster than the inside, as it reaches higher temperatures faster. Sous-vide cooking however, maintains a constant temperature to slowly cook the entire meat to the same temperature. This allows for relatively low cooking temperatures (140&deg; F) to make perfectly rare and safe meat. The extended period of time under this temperature kills bacteria just as well as a shorter amount of time at high temperatures, without damaging the outside of the meat. Sous-vide cooking also seals in the moisture of the meat while cooking, leading to juicier steaks.
               </p>
             </div>
             <div class="span3">
@@ -81,7 +82,36 @@
           </p>
         </div>
       </section>
-
+      
+      <section id="high-level">
+        <div class="page-header">
+          <h1>High Level Design</h1>
+        </div>
+        <p>
+          The general idea of what we needed to do for our project is to create a water temperature regulator with a high degree of accuracy. This led to some hardware and software design decisions that we made.
+        </p>
+        <h3>Hardware Decisions</h3>
+        <p>
+          The main objective of the temperature regulator is to maintain a constant temperature throughout the water and to regulate it when cold food is added or warm food is removed. This idea lead to us deciding to use a foam icebox/cooler to hold the water, as it would be well insulated from outside losses. Because we have an insulated box, we opted for a medium wattage immersion heater (around 300W) to keep costs and power down. Overheating the food in this style of cooking is very bad, while underheating is acceptable since it will be recovered over time.
+        </p>
+        <p>
+          To maintain the constant temperature throughout the water, we opted to add in an aquarium pump to circulate the water. We need this because the temperature sensor needs to have an accurate reading of the total temperature, the immersion heater does not circulate the water enough by convection and the food should be maintained at a constant temperature. We used a low power aquarium pump that would be running whenever the system is on.
+        </p>
+        <p>
+          To monitor the temperature of the water, initially we decided to use a thermocouple. Further research into thermocouples showed us the downsides such as relative cost and high circuity percision necessary to read a percise temperature. We decided to use a solid state temperature sensor with a tight degree accuracy.
+        </p>
+        <p>
+          We decided to use the AVR boards provided by our professor because of our experience programming them and the ease of access. We used a LCD and Keypad along with this for displaying settings information and current temperature, with the keypad for inputting settings.
+        </p>
+        <h3>Software Decisions</h3>
+        <p>
+          We decided to use the <a href="http://people.ece.cornell.edu/land/courses/ece4760/TinyRealTime/index.html">TinyRealTime (TRT)</a> kernel for running our code. We decided to do this because we would have multiple "threads" running at various times, but with no hard time requirements. A delay in reading data from the temperature sensor or outputting data to the LCD would not result in a malfunction. 
+        </p>
+        <p>
+          We decided to model the system using a proportional-integral-derivative (PID) controller. We feel that the body of water fits this system as there is a lag between heating the water and when the water is circulated and the temperature sensor registers the change. Also, the heating element does not turn hot immediately.
+        </p>
+      </section>
+      
       <section id="parts">
         <div class="page-header">
           <h1>Parts List</h1>
@@ -101,7 +131,7 @@
                 <tr><td>$0.74</td><td>Combination Wall Plate</td></tr>
                 <tr><td>$0.59</td><td>Duplex Electrical Outlet</td></tr>
                 <tr><td>$0.69</td><td>Single Pole Switch</td></tr>
-
+                
                 <tr><td>$6.00</td><td>Mega644</td></tr>
                 <tr><td>$4.00</td><td>PC Board</td></tr>
                 <tr><td>$2.00</td><td>9V Battery</td></tr>
@@ -203,20 +233,20 @@
           </div>
         </div>
       </section>
-
+      
       <section id="build">
         <div class="page-header">
           <h1>Build Log <small>How did you make this thing?</small></h1>
         </div>
-
-
+        
+        
         <h2>Hardware</h2>
         <p>
           First thing we did was buy the parts we needed. We used a few places to source the parts, with links to the shops in the "Interesting Links" section. When buying parts, we usually opted for the cheapest solution, as we did not feel we would need extra performance for this application.
         </p>
         <div class="row">
           <p class="span6">
-            We assembled the PC Board with the Mega644 by careful soldering.
+            We assembled the PC Board with the Mega644 by careful soldering. We used the prototype board created by our professor detailed <a href="http://people.ece.cornell.edu/land/PROJECTS/ProtoBoard476/">here</a>.
           </p>
           INSERT BOARD PIC HERE
         </div>
@@ -238,10 +268,13 @@
           </p>
           INSERT PROBE PIC HERE
         </div>
-
+        
         <h2>Software</h2>
         <p>
           Our microcontroller of choice is the Atmel mega644. It is an 8-bit microcontroller with an abundance of i/o ports and easily programmable using C.
+        </p>
+        <p>
+          Our code is organized into 3 tasks. The PID controller task for setting the heater on/off, the keypad task for reading input and the display task for writing to the LCD. 
         </p>
         <div class="row">
           <div class="span6">
@@ -252,24 +285,31 @@
           </div>
         </div>
       </section>
-
+      
       <section id="documentation">
         <div class="page-header">
           <h1>Documentation <small>How do I use this thing?</small></h1>
         </div>
+        <p>
+          Setting up
+        </P>
+        <p>
+          Starting/Settings
+        </p>
+        <p>
+          Cleanup
+        </p>
       </section>
-
+      
       <section id="results">
         <div class="page-header">
           <h1>Results <small>How does it perform?</small></h1>
-        </div>
-        <div>
-          <p>
-
-          </p>
-        </div>
+        </div>        
+        <p>
+          We feel that wehave achieved our goal of making a usable sous-vide cooker.
+        </p>
       </section>
-
+      
       <section id="media">
         <div class="page-header">
           <h1>Media <small>What does this thing look like?</small></h1>
@@ -303,11 +343,11 @@
             <div class="tab-pane fade" id="videos">
               <h4>Coming Soon!</h4>
             </div>
-
+            
           </div>
         </div>
       </section>
-
+      
       <section id="links">
         <div class="page-header">
           <h1>Interesting Links</h1>
@@ -338,6 +378,7 @@
             <ul class="unstyled">
               <li><a href="http://en.wikipedia.org/wiki/Sous-vide">Wikipedia - Sous-vide</a></li>
               <li><a href="http://www.seriouseats.com/2010/03/how-to-sous-vide-steak.html">SeriousEats - Sous-vide Primer</a></li>
+              <li><a href="http://en.wikipedia.org/wiki/PID_controller">Wikipedia - PID Controller</a></li>
             </ul>
           </div>
           <div class="span3">
@@ -347,7 +388,7 @@
           </div>
         </div>
       </section>
-
+      
       <section id="contact">
         <div class="page-header">
           <h1>Contact <small>How can I contact these wonderful people?</small></h1>
@@ -358,9 +399,13 @@
           <p>You can view our class (ECE4760) <a href="http://people.ece.cornell.edu/land/courses/ece4760/">website</a></p>
         </div>
       </section>
-
+      <footer class="footer">
+        <div class="pull-right">
+          <p>All rights reserved 2012</p>
+        </div>
+      </footer>
     </div> <!-- /container -->
-
+    
     <!-- Le javascript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
@@ -374,6 +419,6 @@
         window.prettyPrint && prettyPrint()
       });
     </script>
-
+    
   </body>
 </html>
