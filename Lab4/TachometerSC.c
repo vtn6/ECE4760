@@ -6,14 +6,14 @@
 //         command format is
 //		   the char s, p, i, or d. Each char must be
 //		   followed by a number. Each char/number pair
-//		   is spearated by a comma or at least one 
+//		   is spearated by a comma or at least one
 //		   white space character. Each parameter - arg
 //		   pair should be separated by at least one white
-//		   space character. 
+//		   space character.
 //		   between 0 and 7, e.g. 's 0'
 // Task 3  Displays info to the LCD. Runs about 5
 //		   times per second
-// spoiler Ties up the kernel so that the button task runs 
+// spoiler Ties up the kernel so that the button task runs
 // intermittantly UNLESS deadline-release>delay time
 
 #include "trtSettings.h"
@@ -22,11 +22,9 @@
 #include <util/delay.h>
 #include <avr/sleep.h>
 #include <ctype.h>
-#include "lcd_lib.h"	
+#include "lcd_lib.h"
 #include <avr/pgmspace.h>
 #include <string.h>
-//#include "trtQuery.c"
-
 
 // serial communication library
 // Don't mess with the semaphores
@@ -62,7 +60,7 @@ float k_p = 1.0, k_i = 0.0, k_d = 0.0;
 uint16_t omegaRef = 1000;
 
 //actual speed
-uint16_t omega = 10; 
+uint16_t omega = 10;
 
 //motor speed
 volatile int motor_period = 0;
@@ -74,16 +72,16 @@ void InitLCD(void);
 
 // --- external interrupt ISR ------------------------
 ISR (INT0_vect) {
-        motor_period = TCNT2 + motor_period_ovlf;
-        TCNT2 = 0 ;
-        motor_period_ovlf = 0 ;
+	motor_period = TCNT2 + motor_period_ovlf;
+	TCNT2 = 0 ;
+	motor_period_ovlf = 0 ;
 }
 // --- set up extra 8 bits on timer 2 ----------------
 ISR (TIMER2_OVF_vect) {
-        motor_period_ovlf = motor_period_ovlf + 256 ;
+	motor_period_ovlf = motor_period_ovlf + 256 ;
 }
 
-//PID Control Stuff...worry about this silt later
+//PID Control Stuff
 // --- define task 1  ----------------------------------------
 void pidControl(void* args) 
   {	
@@ -104,8 +102,6 @@ void pidControl(void* args)
 	int8_t sign = 0;
 	int16_t derivative;
 	int16_t output;
-//	uint16_t maxOutput = 3000;
-//	uint16_t minOutput = 200;
 	int16_t integral;
 	
 	uint8_t first = 1;
@@ -131,7 +127,7 @@ void pidControl(void* args)
 
 		//make local copies of the system parameters
 		trtWait(SEM_OMEGA);
-		omega = localOmega; 
+		omega = localOmega;
 		trtSignal(SEM_OMEGA);
 
 		trtWait(SEM_OMEGA_REF);
@@ -167,7 +163,7 @@ void pidControl(void* args)
 				sign = 0;
 			}
 		}
-		
+
 		//Update the integral of the error
 		if (!first){
 			if (sign == prevSign){
@@ -205,19 +201,16 @@ void pidControl(void* args)
 
 		//Set the task to execute again in 0.02 seconds.
 		rel = trtCurrentTime() + SECONDS2TICKS(0.02);
-	    dead = trtCurrentTime() + SECONDS2TICKS(0.025);
-	    trtSleepUntil(rel, dead);
+		dead = trtCurrentTime() + SECONDS2TICKS(0.025);
+		trtSleepUntil(rel, dead);
 	}
-  }
+}
 
 
 //read the commands from the user
 // --- define task 2  ----------------------------------------
-void serialComm(void* args) 
-  {
-	//uint8_t cmd0, cmd1, cmd2, cmd3;
-	//float val0, val1, val2, val3;
-	//uint8_t numParams;
+void serialComm(void* args)
+{
 	float  val;
 	uint8_t cmd;
 
@@ -229,51 +222,51 @@ void serialComm(void* args)
 		//									set the integral gain to val2
 		//									set the differential gain to val3
 		//If an invalid command is received alert the user of what went wrong
-		
+
 		fprintf(stdout, ">") ;
-		//numParams = fscanf(stdin, "%c %f %c %f %c %f %c %f", &cmd0, &val0, &cmd1, &val1, &cmd2, &val2, &cmd3, &val3) ;
-		
+
 		fscanf(stdin, "%s%f", &cmd, &val);
-		//trtWait(SEM_STRING_DONE);
 
 		//update the parameters
-		//fprintf(stdout, "Cmd is %c\n", cmd);
-		//fprintf(stdout, "Val is %f\n", val);
 		if (val >= 0) {
 			switch (cmd){
-				case 's':
-					trtWait(SEM_OMEGA_REF);
-					omegaRef = (int) val;
-					trtSignal(SEM_OMEGA_REF);
-					break;
-				case 'p':
-					trtWait(SEM_K_P);
-					k_p = val;
-					trtSignal(SEM_K_P);
-					break;
-				case 'i':
-					trtWait(SEM_K_I);
-					k_i = val;
-					trtSignal(SEM_K_I);
-					break;
-				case 'd':
-					trtWait(SEM_K_D);
-					k_d = val;
-					trtSignal(SEM_K_D);
-					break;
-				default:
-					fprintf(stdout, "Command %c not recognized\n", cmd);
-					break;
+			// set rpm
+			case 's':
+				trtWait(SEM_OMEGA_REF);
+				omegaRef = (int) val;
+				trtSignal(SEM_OMEGA_REF);
+				break;
+			// set p factor
+			case 'p':
+				trtWait(SEM_K_P);
+				k_p = val;
+				trtSignal(SEM_K_P);
+				break;
+			// set integral factor
+			case 'i':
+				trtWait(SEM_K_I);
+				k_i = val;
+				trtSignal(SEM_K_I);
+				break;
+			// set derivative factor
+			case 'd':
+				trtWait(SEM_K_D);
+				k_d = val;
+				trtSignal(SEM_K_D);
+				break;
+			default:
+				fprintf(stdout, "Command %c not recognized\n", cmd);
+				break;
 			}
 		}
 		else{
 			fprintf(stdout, "Parameters must be non negative, %f is negative\n", val);
 		}
 	}
-  }
+}
 
 // --- spoiler ---------------------------------------
-void displayParams(void* args) 
+void displayParams(void* args)
 {
 	//String constants
 	const uint8_t LCDSpeed[9] = "SPEED: \0";
@@ -334,8 +327,8 @@ void displayParams(void* args)
 	//initialize the LCD
 	InitLCD();
 	LCDGotoXY(0, 0);
-  	LCDstring(LCDSpeed, SPEED_LEN);
-  	
+	LCDstring(LCDSpeed, SPEED_LEN);
+
 	sprintf(LCDOmega, "%i", omega);
 	LCDGotoXY(OMEGA_LOC, 0);
 	omegaLen = strlen(LCDOmega);
@@ -352,20 +345,20 @@ void displayParams(void* args)
 	if (omegaRefLen >= OMEGA_REF_LEN) {
 		omegaRefLen = OMEGA_REF_LEN;
 	}
-    LCDGotoXY(OMEGA_REF_LOC, 1);
-    LCDstring(LCDOmegaRef, omegaRefLen);
-	
+	LCDGotoXY(OMEGA_REF_LOC, 1);
+	LCDstring(LCDOmegaRef, omegaRefLen);
+
 	sprintf(LCDk_p, "%f", localk_p);
-    LCDGotoXY(K_P_LOC, 1);
-    LCDstring(LCDk_p, K_P_LEN);
+	LCDGotoXY(K_P_LOC, 1);
+	LCDstring(LCDk_p, K_P_LEN);
 
 	sprintf(LCDk_i, "%f", localk_i);
-    LCDGotoXY(K_I_LOC, 1);
-    LCDstring(LCDk_i, K_I_LEN);
+	LCDGotoXY(K_I_LOC, 1);
+	LCDstring(LCDk_i, K_I_LEN);
 
 	sprintf(LCDk_d, "%f", localk_d);
-    LCDGotoXY(K_D_LOC, 1);
-    LCDstring(LCDk_d, K_D_LEN);
+	LCDGotoXY(K_D_LOC, 1);
+	LCDstring(LCDk_d, K_D_LEN);
 
 	uint32_t rel, dead ;
 	//Update the LCD about 5 times a second
@@ -408,7 +401,7 @@ void displayParams(void* args)
 		trtWait(SEM_K_D);
 		if (localk_d != k_d) {
 			localk_d = k_d;
-			updatek_d = 1;	
+			updatek_d = 1;
 		}
 		else{
 			updatek_d = 0;
@@ -423,26 +416,26 @@ void displayParams(void* args)
 			if (omegaRefLen >= OMEGA_REF_LEN) {
 				omegaRefLen = OMEGA_REF_LEN;
 			}
-    		LCDGotoXY(OMEGA_REF_LOC, 1);
-	    	LCDstring(LCDOmegaRef, omegaRefLen);
+			LCDGotoXY(OMEGA_REF_LOC, 1);
+			LCDstring(LCDOmegaRef, omegaRefLen);
 		}
 
 		if (updatek_p){
 			sprintf(LCDk_p, "%f", localk_p);
-            LCDGotoXY(K_P_LOC, 1);
-            LCDstring(LCDk_p, K_P_LEN);
+			LCDGotoXY(K_P_LOC, 1);
+			LCDstring(LCDk_p, K_P_LEN);
 		}
 
 		if (updatek_i){
 			sprintf(LCDk_i, "%f", localk_i);
-            LCDGotoXY(K_I_LOC, 1);
-            LCDstring(LCDk_i, K_I_LEN);
+			LCDGotoXY(K_I_LOC, 1);
+			LCDstring(LCDk_i, K_I_LEN);
 		}
 
 		if (updatek_d){
 			sprintf(LCDk_d, "%f", localk_d);
-            LCDGotoXY(K_D_LOC, 1);
-            LCDstring(LCDk_d, K_D_LEN);
+			LCDGotoXY(K_D_LOC, 1);
+			LCDstring(LCDk_d, K_D_LEN);
 		}
 
 		trtWait(SEM_OMEGA);
@@ -462,24 +455,24 @@ void displayParams(void* args)
 
 // --- Initialize the LCD ----------------------------
 void InitLCD(void){
-  LCDinit();  //initialize the display
-  LCDcursorOFF();
-  LCDclr();        //clear the display
-  LCDGotoXY(0,0);
+	LCDinit();  //initialize the display
+	LCDcursorOFF();
+	LCDclr();        //clear the display
+	LCDGotoXY(0,0);
 }
 
 // --- Main Program ----------------------------------
 int main(void) {
+	//set external trigger
+	DDRD = 0b11111011;
+	PORTD = 0;
+	//init the UART -- trt_uart_init() is in trtUart.c
+	trt_uart_init();
+	stdout = stdin = stderr = &uart_str;
+	fprintf(stdout,"\n\r TRT 9feb2009\n\r\n\r");
 
-  DDRD = 0b11111011;
-  PORTD = 0;
-  //init the UART -- trt_uart_init() is in trtUart.c
-  trt_uart_init();
-  stdout = stdin = stderr = &uart_str;
-  fprintf(stdout,"\n\r TRT 9feb2009\n\r\n\r");
-  
-  //initialize Timer2 and the external interrupt
-  //set up INT0
+	//initialize Timer2 and the external interrupt
+	//set up INT0
 	EIMSK = 1<<INT0 ; // turn on int0
 	EICRA = 3 ;       // rising edge
 	// turn on timer 2 to be read in int0 ISR
@@ -487,44 +480,44 @@ int main(void) {
 	// turn on timer 2 overflow ISR for double precision time
 	TIMSK2 = 1 ;
 
-  //setup Timer 0
-  // Set the timer for fast PWM mode, clear OC0A on Compare Match, set OC0A
-  // at BOTTOM (non-inverting mode)
-  TCCR0A = (1 << COM0A1) | (1 << WGM01) | (1 << WGM00); //Set the timer
+	//setup Timer 0
+	// Set the timer for fast PWM mode, clear OC0A on Compare Match, set OC0A
+	// at BOTTOM (non-inverting mode)
+	TCCR0A = (1 << COM0A1) | (1 << WGM01) | (1 << WGM00); //Set the timer
 
-  //Set the prescalar to 256 so the PWM runs at less than 1000 Hz
-  TCCR0B = (1 << CS02) | (1 << CS00);
+	//Set the prescalar to 256 so the PWM runs at less than 1000 Hz
+	TCCR0B = (1 << CS02) | (1 << CS00);
 
-  OCR0A = 127;
+	OCR0A = 127;
 
-  // start TRT
-  trtInitKernel(128); // 80 bytes for the idle task stack
+	// start TRT
+	trtInitKernel(128); // 80 bytes for the idle task stack
 
-  // --- create semaphores ----------
-  // You must creat the first two semaphores if you use the uart
-  trtCreateSemaphore(SEM_RX_ISR_SIGNAL, 0) ; // uart receive ISR semaphore
-  trtCreateSemaphore(SEM_STRING_DONE,0) ;  // user typed <enter>
-  
-  // variable protection
-  trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_OMEGA, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_K_P, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_K_I, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_K_D, 1) ; // protect shared variables
- // --- creat tasks  ----------------
-  trtCreateTask(pidControl, 256, SECONDS2TICKS(0.05), SECONDS2TICKS(0.05), &(args[0]));
-  trtCreateTask(serialComm, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
-  trtCreateTask(displayParams, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
-  
-  sei();
-  // --- Idle task --------------------------------------
-  // just sleeps the cpu to save power 
-  // every time it executes
-  set_sleep_mode(SLEEP_MODE_IDLE);
-  sleep_enable();
-  while (1) 
-  {
-  	sleep_cpu();
-  }
+	// --- create semaphores ----------
+	// You must creat the first two semaphores if you use the uart
+	trtCreateSemaphore(SEM_RX_ISR_SIGNAL, 0) ; // uart receive ISR semaphore
+	trtCreateSemaphore(SEM_STRING_DONE,0) ;  // user typed <enter>
+
+	// variable protection
+	trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
+	trtCreateSemaphore(SEM_OMEGA, 1) ; // protect shared variables
+	trtCreateSemaphore(SEM_K_P, 1) ; // protect shared variables
+	trtCreateSemaphore(SEM_K_I, 1) ; // protect shared variables
+	trtCreateSemaphore(SEM_K_D, 1) ; // protect shared variables
+	// --- creat tasks  ----------------
+	trtCreateTask(pidControl, 256, SECONDS2TICKS(0.05), SECONDS2TICKS(0.05), &(args[0]));
+	trtCreateTask(serialComm, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
+	trtCreateTask(displayParams, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
+
+	sei();
+	// --- Idle task --------------------------------------
+	// just sleeps the cpu to save power
+	// every time it executes
+	set_sleep_mode(SLEEP_MODE_IDLE);
+	sleep_enable();
+	while (1)
+	{
+		sleep_cpu();
+	}
 
 } // main
