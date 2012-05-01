@@ -1,21 +1,19 @@
 ###############################################################################
-# Makefile for the project DDS
+# Makefile for the project SousVide
 ###############################################################################
 
 ## General Flags
-PROJECT = DDS
+PROJECT = SousVide
 MCU = atmega644
-TARGET = DDS.elf
+TARGET = SousVide.elf
 CC = avr-gcc
-
-CPP = avr-g++
 
 ## Options common to compile, link and assembly rules
 COMMON = -mmcu=$(MCU)
 
 ## Compile options common for all C compilation units.
 CFLAGS = $(COMMON)
-CFLAGS += -Wall -gdwarf-2 -std=gnu99 -DF_CPU=16000000UL -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+CFLAGS += -Wall -gdwarf-2 -std=gnu99   -DF_CPU=16000000UL -Os -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CFLAGS += -MD -MP -MT $(*F).o -MF dep/$(@F).d 
 
 ## Assembly specific flags
@@ -25,7 +23,7 @@ ASMFLAGS += -x assembler-with-cpp -Wa,-gdwarf2
 
 ## Linker flags
 LDFLAGS = $(COMMON)
-LDFLAGS +=  -Wl,-Map=DDS.map
+LDFLAGS +=  -Wl,-Map=SousVide.map
 
 
 ## Intel Hex file production flags
@@ -37,25 +35,16 @@ HEX_EEPROM_FLAGS += --change-section-lma .eeprom=0 --no-change-warnings
 
 
 ## Objects that must be built in order to link
-OBJECTS = DDS.o keypad.o lcd_lib.o uart.o 
+OBJECTS = SousVide.o 
 
 ## Objects explicitly added by the user
 LINKONLYOBJECTS = 
 
 ## Build
-all: $(TARGET) DDS.hex DDS.eep DDS.lss size
+all: $(TARGET) SousVide.hex SousVide.eep SousVide.lss size
 
 ## Compile
-DDS.o: ../DDS.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-keypad.o: ../keypad.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-lcd_lib.o: ../lcd_lib.c
-	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
-
-uart.o: ../uart.c
+SousVide.o: ../SousVide.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c  $<
 
 ##Link
@@ -78,9 +67,9 @@ size: ${TARGET}
 ## Clean target
 .PHONY: clean
 clean:
-	-rm -rf $(OBJECTS) DDS.elf dep/* DDS.hex DDS.eep DDS.lss DDS.map
+	-rm -rf $(OBJECTS) SousVide.elf dep/* SousVide.hex SousVide.eep SousVide.lss SousVide.map
 
 
 ## Other dependencies
--include $(shell mkdir dep 2>NUL) $(wildcard dep/*)
+-include $(shell mkdir dep 2>/dev/null) $(wildcard dep/*)
 

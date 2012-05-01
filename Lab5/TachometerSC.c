@@ -39,11 +39,12 @@
 FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 
 // semaphore to protect shared variables
-#define SEM_OMEGA_REF 3
-#define SEM_K_P 4
-#define SEM_K_I 5
-#define SEM_K_D 6
-#define SEM_OMEGA 7
+#define SEM_TEMP_REF 3
+#define SEM_TEMP 4
+#define SEM_SONAR 5 
+#define SEM_OVERFLOW 6
+#define SEM_START_HEATING 7
+#define SEM_THICKNESS 8
 
 // the usual
 #define and &&
@@ -54,59 +55,244 @@ FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 // not actually used in this example
 int args[2];
 
-//shared variables
-//PID parameters
-float k_p = 1.0, k_i = 0.0, k_d = 0.0;
+uint8_t tempRef = 25; //Centigrade Reference temperature.(temperature of the food)
+uint8_t waterTempRef = 30; //Centigrade Reference temperature of the water
 
-//Reference speed
-uint16_t omegaRef = 1000;
 
-//actual speed
-uint16_t omega = 10; 
+uint8_t temp = 10;	//Centigrade calculated temperate of the food
+uint8_t waterTemp = 9;	//Centigrade, measured water temperature
+ 
+uint8_t thickness = 0;	//cm, thickness of the food
+//flag indicating the PID controller to start heating the water
+uint8_t startHeating = 0;
 
-//motor speed
-volatile int motor_period = 0;
-volatile int motor_period_ovlf =0;
+//time for the ultrasonic reange finder pulse to return 
+volatile int duration = 0;
+volatile int durationOVF = 0;
+
+//actual distance to the surface of the bath
+volatile float distance;
+
+//flag indicating when the current measurement has finished
+volatile uint8_t sonarFinished;
+
+//flag indicating that the bath is overflowing
+uint8_t overflow = 0;
 
 //function signatures
-void setParam(uint8_t, float); //Helper method for setting PID parameters
 void InitLCD(void);
 
 // --- external interrupt ISR ------------------------
-ISR (INT0_vect) {
-        motor_period = TCNT2 + motor_period_ovlf;
-        TCNT2 = 0 ;
-        motor_period_ovlf = 0 ;
-}
-// --- set up extra 8 bits on timer 2 ----------------
-ISR (TIMER2_OVF_vect) {
-        motor_period_ovlf = motor_period_ovlf + 256 ;
+ISR (INT1_vect) {
+		if (PORTA & 0x01){
+			TCNT2  = 0; 	//Reset timer 2 so we can start measuring the width
+							//of the pulse;
+		}
+		else {
+			duration = TCNT2 + durationOVF;
+	        durationOVF = 0;
+			distance = 171.6 * duration * 0.000064;
+			sonarFinished = 1;
+			trtSignal(SEM_SONAR);
+		}
 }
 
-//PID Control Stuff...worry about this silt later
+// --- set up extra 8 bits on timer 2 ----------------
+ISR (TIMER2_OVF_vect) {
+        durationOVF += 255;
+}
+
+// --- define a task for making sonar measurements
+void sonar(void* args){
+	uint32_t rel, dead ; //relase and deadline times
+	uint8_t threshold = 5;	//cm, If a new value differs by this much, assume the
+							//food was put in
+							
+	uint8_t refHeight = 0; 		//cm, the (final) height of the water without food
+	uint8_t newHeight = 0;		//cm, new height of the bath after adding food
+	uint8_t heightAvg = 0;		//cm, average height of the water. without food
+
+	uint8_t newHeightSet = 0; 	//Flag indicating that the thickness of the food
+								//has been calculated
+	uint8_t refHeightSet = 0;	//Flag indicating that we have measured
+								//the reference distance from the sonar
+								//to the water's surface
+
+	//Boundaries so we don't measure the top or bottom of the bath
+	uint8_t minDist = 3;	//cm
+	uint8_t maxDist = 30; //cm
+
+	uint8_t numSamples = 0;	//he number of samples currently taken in the set
+	uint8_t desiredNumSamples = 64; //the number of samples to take in a set.
+	
+	uint8_t prevDistance = 0; //cm, the previous measurement
+
+	//Ratio of the area of the bath and cooking bags
+	uint8_t areaRatio = 2;
+	
+	uint8_t firstMeasurementTaken = 0;	//flag indicating that the very first measurement has not been taken
+	uint8_t firstSample = 0;	//cm, first measurement out of 64 in a set of samples
+
+	//flags inicating which distance we are measuring
+	uint8_t measuringRefHeight = 1;
+	uint8_t measuringNewHeight = 0;
+
+	while(1){
+		
+		PORTA |= 0x01;	//Set the trigger pin high to start the pulse
+		_delay_us(10);	//Give the ultrasonic 10 us to send the pulse
+		PORTA &= ~0x01;	//Set the trigger pin low to stop transmitting
+		sonarFinished = 0;
+		//Use TRTAccept to read the sonarFinishedSemaphor
+		while (!sonarFinished){
+			trtWait(SEM_SONAR);
+		}
+		numSamples++;
+
+		//if this is the first sample, just record the distance
+		//as the height, previous measurement, and first sample.
+		if (!firstMeasurementTaken){
+			prevDistance = distance;
+			heightAvg = distance;
+			firstMeasurementTaken = 1;
+			firstSample = distance;
+		}
+
+		//Otherwise determine what we wanted to measure
+		//and whether or not the state ofthe cooker has changed
+		else {
+			//check if the measurement is valid.
+			if  (distance < maxDist and distance > minDist) {
+				
+				//check if the depth increased by more than 5cm (corresponds to
+				// adding or removing food).
+				if (distance - prevDistance > threshold or prevDistance - distance > 5){
+					numSamples = 1;
+					firstSample = distance;
+					newHeight = distance;
+					measuringNewHeight = 1;
+					measuringRefHeight = 0;
+				}
+				
+				else {
+					if (!measuringNewHeight){
+						if (!numSamples){
+							firstSample = distance;
+							heightAvg = 0;
+						}
+						heightAvg += distance;
+					}
+					else {
+						newHeight += distance;
+					}
+					numSamples++;
+				}	
+				//check if we are done sampling
+				if (numSamples == desiredNumSamples){
+					//check if we are setting the reference height
+					//or the new height
+					if (!measuringNewHeight){
+						heightAvg <<= 6;
+						//check if the measurement has increased substantially
+						//since taking the first sample. If so, the water level
+						//is rising and we should start sampling again
+						if (heightAvg - firstSample > threshold or firstSample - heightAvg > threshold){
+							measuringRefHeight = 1;
+							numSamples = 0;
+						}
+
+						//the water level has settled. Set the reference height flag
+						//and clear the measuring reference height flag
+						else{
+							if (measuringRefHeight){
+								refHeight = heightAvg;
+								refHeightSet = 1;
+								measuringRefHeight = 0;
+							}
+							numSamples = 0;
+						}
+					}
+					
+					//We finished taking measurements for the new height
+					//of the bath
+					else{
+						//set the new height of the bath, calculate the thickness
+						//of the food, and signal the heating task to start heating
+						//the water
+						newHeight <<= 6;
+						newHeightSet = 1;
+						measuringNewHeight = 0;
+						trtWait(SEM_THICKNESS);
+						thickness = areaRatio * (newHeight - refHeight);
+						trtSignal(SEM_THICKNESS);
+						trtSignal(SEM_START_HEATING);
+						numSamples =0 ;
+					}
+				}
+			}
+			else if (distance <= minDist){
+				overflow = 1;
+			}
+			else{
+				firstMeasurementTaken = 0;
+				measuringNewHeight = 0;
+				measuringRefHeight = 1;
+				numSamples = 0;
+			}
+
+			prevDistance = distance;
+		}
+
+		rel = trtCurrentTime() + SECONDS2TICKS(0.015625);
+	    dead = trtCurrentTime() + SECONDS2TICKS(0.02);
+	    trtSleepUntil(rel, dead);
+	}
+
+}
+/*
+//Code for pulsing the sonar to determine the new volume of the water bath
+//This will allow us to calculate the thickness of the food being cooked
+//The number of samples averaged is equal to 2 ^ numSamples. This will let
+//us use shifts inst
+uint32_t getDistance(uint8_t desiredNumSamples) {
+	uint8_t sampleId;
+	uint32_t distance = 0;
+	for (sampleId = 0; sampleId < desiredNumSamples){
+		distance += measureDistance();
+	}
+
+	distance >>= numSamples;
+	return distance;
+}
+*/
+
+//PID Control Stuff keep the water temperature constant
 // --- define task 1  ----------------------------------------
 void pidControl(void* args) 
   {	
   	uint32_t rel, dead ; //relase and deadline times
-	int16_t error;		//Calculated error
-	int16_t prevError;	//previously calculated error
-	uint16_t prevOmega; //previously measured motor frequency
-	int8_t prevSign;	//previously calculated sign of the error
+	int16_t error = 0;		//Calculated error
+	int16_t prevError = 0;	//previously calculated error
+	uint16_t prevTemp; //previously measured motor frequency
+	int8_t prevSign =0 ;	//previously calculated sign of the error
 	
 	//Local copies of shared system parameters
-	uint16_t localOmega;	
-	uint16_t localOmegaRef;
-	float localk_p;
-	float localk_i;
-	float localk_d;
+	uint8_t localTemp = 0;	
+	uint8_t localTempRef;
+	uint8_t localWaterTemp;	
+	uint8_t localWaterTempRef;
+	float k_p = 7.1;
+	float k_i = 0.11;
+	float k_d = 0.68;
 
+	//transduction constant for LM35
+	float transductionConstant = 0.1;
+	
 	//Declarations for calculated values.
 	int8_t sign = 0;
 	int16_t derivative;
 	int16_t output;
-//	uint16_t maxOutput = 3000;
-//	uint16_t minOutput = 200;
-	int16_t integral;
+	int16_t integral = 0;
 	
 	uint8_t first = 1;
 
@@ -114,44 +300,37 @@ void pidControl(void* args)
 	PORTB = 0;
 	while(1)
 	{
+
+		while (!startHeating){
+			trtWait(SEM_START_HEATING);
+		}
+
+
+		Ain = ADCH;
+		voltage = (float)Ain;
+		voltage = (voltage/256.0) * Vref;
+		localWaterTemp = voltage * transductionConstant 
 		//update the previous measuremtns
 		if (!first){
-			prevOmega = localOmega;
+			prevTemp = localTemp;
 			prevSign = sign;
 			prevError = error;
 		}
 
-		//ensure that the motor is spinning
-		if (!motor_period) {
-			localOmega = 0;
-		}
-		else{
-			localOmega = (uint16_t) ((16000000.0 / 1024.0) / (float)motor_period * 60.0);
-		}
 
+
+		localWaterTemp = 0;
 		//make local copies of the system parameters
-		trtWait(SEM_OMEGA);
-		omega = localOmega; 
-		trtSignal(SEM_OMEGA);
+		trtWait(SEM_TEMP);
+		waterTemp = localWaterTemp; 
+		trtSignal(SEM_TEMP);
 
-		trtWait(SEM_OMEGA_REF);
-		localOmegaRef = omegaRef;
-		trtSignal(SEM_OMEGA_REF);
-
-		trtWait(SEM_K_P);
-		localk_p = k_p;
-		trtSignal(SEM_K_P);
-
-		trtWait(SEM_K_I);
-		localk_i = k_i;
-		trtSignal(SEM_K_I);
-
-		trtWait(SEM_K_D);
-		localk_d = k_d;
-		trtSignal(SEM_K_D);
+		trtWait(SEM_TEMP_REF);
+		localWaterTempRef = waterTempRef;
+		trtSignal(SEM_TEMP_REF);
 
 		//Proportional Error
-		error = localOmegaRef - localOmega;
+		error = localWaterTempRef - localWaterTemp;
 
 		//Integral Error
 
@@ -185,10 +364,10 @@ void pidControl(void* args)
 
 		//determine what the output should be
 		if (!first){
-			output = localk_p * error + localk_i * integral + localk_d * derivative;
+			output = k_p * error + k_i * integral + k_d * derivative;
 		}
 		else{
-			output = localk_p * error;
+			output = k_p * error;
 			first = 0;
 		}
 
@@ -203,6 +382,7 @@ void pidControl(void* args)
 			OCR0A = output;
 		}
 
+		ADCSRA |= (1<<ADSC); //start another converstion
 		//Set the task to execute again in 0.02 seconds.
 		rel = trtCurrentTime() + SECONDS2TICKS(0.02);
 	    dead = trtCurrentTime() + SECONDS2TICKS(0.025);
@@ -211,6 +391,7 @@ void pidControl(void* args)
   }
 
 
+/*
 //read the commands from the user
 // --- define task 2  ----------------------------------------
 void serialComm(void* args) 
@@ -270,8 +451,9 @@ void serialComm(void* args)
 			fprintf(stdout, "Parameters must be non negative, %f is negative\n", val);
 		}
 	}
-  }
+  } */
 
+/*
 // --- spoiler ---------------------------------------
 void displayParams(void* args) 
 {
@@ -459,7 +641,7 @@ void displayParams(void* args)
 		trtSleepUntil(rel, dead);
 	}
 }
-
+*/
 // --- Initialize the LCD ----------------------------
 void InitLCD(void){
   LCDinit();  //initialize the display
@@ -478,14 +660,24 @@ int main(void) {
   stdout = stdin = stderr = &uart_str;
   fprintf(stdout,"\n\r TRT 9feb2009\n\r\n\r");
   
+  //enable ADC and set prescaler to 1/128*16MHz=125,000
+  //and clear interupt enable
+  //and start a conversion
+    ADCSRA = (1<<ADEN) + 7;
+
+  // Set analog comp to connect to timer capture input 	
+  // and turn on the band gap reference on the positive input  
+    ACSR =  (1<<ACIC) ; //0b01000100  ;
+  
   //initialize Timer2 and the external interrupt
   //set up INT0
-	EIMSK = 1<<INT0 ; // turn on int0
-	EICRA = 3 ;       // rising edge
+	EIMSK = 1<<INT1 ; // turn on int0
+	EICRA = 1 << ISC10 ;       // trigger on any edge edge
 	// turn on timer 2 to be read in int0 ISR
 	TCCR2B = 7 ; // divide by 1024
 	// turn on timer 2 overflow ISR for double precision time
-	TIMSK2 = 1 ;
+	TIMSK2 = 1;
+
 
   //setup Timer 0
   // Set the timer for fast PWM mode, clear OC0A on Compare Match, set OC0A
@@ -506,15 +698,18 @@ int main(void) {
   trtCreateSemaphore(SEM_STRING_DONE,0) ;  // user typed <enter>
   
   // variable protection
-  trtCreateSemaphore(SEM_OMEGA_REF, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_OMEGA, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_K_P, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_K_I, 1) ; // protect shared variables
-  trtCreateSemaphore(SEM_K_D, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_TEMP_REF, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_TEMP, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_OVERFLOW, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_THICKNESS, 1) ; // protect shared variables
+  trtCreateSemaphore(SEM_START_HEATING, 0) ; // protect shared variables
+  trtCreateSemaphore(SEM_SONAR, 1); // Condition Variable for sonar measurement
+
  // --- creat tasks  ----------------
   trtCreateTask(pidControl, 256, SECONDS2TICKS(0.05), SECONDS2TICKS(0.05), &(args[0]));
-  trtCreateTask(serialComm, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
-  trtCreateTask(displayParams, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
+ // trtCreateTask(serialComm, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
+ // trtCreateTask(displayParams, 256, SECONDS2TICKS(0.1), SECONDS2TICKS(0.1), &(args[1]));
+  trtCreateTask(sonar, 256, SECONDS2TICKS(0.05), SECONDS2TICKS(0.05), &(args[0]));
   
   sei();
   // --- Idle task --------------------------------------
