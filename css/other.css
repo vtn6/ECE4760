@@ -22,3 +22,17 @@ p {
 #table-parts tr td:first-child, #table-parts tr th:first-child {
   text-align: right;
 }
+.thumbnail {
+  position: relative;
+  }
+.thumbnail .caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin: 4px;
+  padding: 10px 15px 8px;
+  background: #282828;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+}
