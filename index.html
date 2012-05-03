@@ -7,12 +7,8 @@
     <meta name="description" content="">
     <meta name="author" content="Harrison Wong, David Diner">
     
-    <!-- Le styles -->
-    <!--<link rel="stylesheet/less" href="less/bootstrap.less">
-      
-    <script src="js/less.js"></script>-->
     <link rel="stylesheet" href="css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/prettify.css">
+    <!--<link rel="stylesheet" href="css/prettify.css">-->
     <link rel="stylesheet" href="css/other.css">
     <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
@@ -35,7 +31,7 @@
               <li><a href="#documentation">Documentation</a></li>
               <li><a href="#results">Results</a></li>
               <li><a href="#media">Media</a></li>
-              <li><a href="#links">Interesting Links</a></li>
+              <li><a href="#links">Appendix</a></li>
               <li><a href="#contact">Contact</a></li>
             </ul>
           </div><!--/.nav-collapse -->
@@ -49,38 +45,44 @@
       <header class="hero-unit" id="overview">
         <h1>Immersion Cooker</h1>
         <p class="lead">An ATMEL based microcontroller powered auto-sensing immersion cooker (with bluetooth!)</p>
+        <p class="pull-right">
+          <small>
+            Harrison Wong (hcw29), David Diner (dg386)
+          </small>
+        </p>
       </header>
       
       <section id="about">
         <div class="page-header">
           <h1>About <small>What is this thing?</small></h1>
-        </div>
-        <div>
-          <p>
-            For our ECE4760 Spring 2012 (Microcontrollers) Final Project at Cornell University we decided to create a sous-vide cooker (a type of immersion cooker) that can maintain a set temperature for extended periods of time. It also senses the amount of food placed inside to determine the optimal cooking time.
-          </p>
-          <div class="row">
-            <div class="span9">
-              <p>
-                What is sous-vide? Simply put, it's a way of cooking food in airtight plastic bags under water for a long duration. This requires setting a temperature to keep the water constant at, to allow the food to reach a constant temperature very slowly.
-              </p>
-              <p>
-                Why go through all this trouble? Look at that delicious piece of steak! Normally when cooking meat, the outside cooks faster than the inside, as it reaches higher temperatures faster. Sous-vide cooking however, maintains a constant temperature to slowly cook the entire meat to the same temperature. This allows for relatively low cooking temperatures (140&deg; F) to make perfectly rare and safe meat. The extended period of time under this temperature kills bacteria just as well as a shorter amount of time at high temperatures, without damaging the outside of the meat. Sous-vide cooking also seals in the moisture of the meat while cooking, leading to juicier steaks.
-              </p>
-            </div>
-            <div class="span3">
-              <div class="thumbnail">
-                <img src="img/Beef-cooked-sous-vide-2.jpg" alt />
-                <div class="caption">
-                  <h4>A rare cooked steak</h4>
-                </div>
+        </div>        
+        <p>
+          For our ECE4760 Spring 2012 (Microcontrollers) Final Project at Cornell University we decided to create a sous-vide cooker (a type of immersion cooker) that can maintain a set temperature for extended periods of time. It can auto-calculate the appropriate time for cooking a certain thickness of meat using heat transfer equations.
+        </p>
+        <div class="row">
+          <div class="span9">
+            <p>
+              What is sous-vide? Simply put, it's a way of cooking food in airtight plastic bags under water for a long duration. This requires setting a temperature to keep the water constant at, to allow the food to reach a constant temperature very slowly.
+            </p>
+            <p>
+              Why go through all this trouble? Look at that delicious piece of steak! Normally when cooking meat, the outside cooks faster than the inside, as it reaches higher temperatures faster. Sous-vide cooking however, maintains a constant temperature to slowly cook the entire meat to the same temperature. This allows for relatively low cooking temperatures (140&deg; F) to make perfectly rare and safe meat. The extended period of time under this temperature kills bacteria just as well as a shorter amount of time at high temperatures, without damaging the outside of the meat. Sous-vide cooking also seals in the moisture of the meat while cooking, leading to juicier steaks.
+            </p>
+          </div>
+          <div class="span3">
+            <div class="thumbnail">
+              <img src="img/Beef-cooked-sous-vide-2.jpg" alt />
+              <div class="caption">
+                <h4>A rare cooked steak</h4>
               </div>
             </div>
           </div>
-          <p>
-            So why make a sous-vide cooker ourselves? What makes our cooker different? We were able to create our cooker for under $75, which is in stark contrast to the $300 sous-vide cookers for home use. Just a sous-vide controller itself costs $150, not including a heating unit. Moreover, we implement advanced features, such as a water level monitor, as well as a automatic timer that can set cooking times depending on the quantity of food cooking.
-          </p>
         </div>
+        <p>
+          So why make a sous-vide cooker ourselves? What makes our cooker different? We were able to create our cooker for under $75, which is in stark contrast to the $300 sous-vide cookers for home use. Just a sous-vide controller itself costs $150, not including a heating unit. Moreover, we implement advanced features, such as a water level monitor, as well as a automatic timer that can set cooking times depending on the quantity of food cooking.
+        </p>
+        <p>
+          So did it work? You bet it did! We've tested it up to 150&deg;F which is is good enough for medium-well cooked steak (we refuse to cook well). The system performs perfectly for an extended amount of time at this temperature.
+        </p>
       </section>
       
       <section id="high-level">
@@ -92,23 +94,41 @@
         </p>
         <h3>Hardware Decisions</h3>
         <p>
-          The main objective of the temperature regulator is to maintain a constant temperature throughout the water and to regulate it when cold food is added or warm food is removed. This idea lead to us deciding to use a foam icebox/cooler to hold the water, as it would be well insulated from outside losses. Because we have an insulated box, we opted for a medium wattage immersion heater (around 300W) to keep costs and power down. Overheating the food in this style of cooking is very bad, while underheating is acceptable since it will be recovered over time.
+          The main objective of the temperature regulator is to maintain a constant temperature throughout the water and to regulate it when cold food is added or warm food is removed. This idea lead to us deciding to use a foam icebox/cooler to hold the water, as it would be well insulated from outside losses. Because we have an insulated box, we opted for a medium wattage immersion heater (around 300W) to keep costs and power down. Overheating the food in this style of cooking is very bad, while under-heating is acceptable since it will be recovered over time.
         </p>
         <p>
           To maintain the constant temperature throughout the water, we opted to add in an aquarium pump to circulate the water. We need this because the temperature sensor needs to have an accurate reading of the total temperature, the immersion heater does not circulate the water enough by convection and the food should be maintained at a constant temperature. We used a low power aquarium pump that would be running whenever the system is on.
         </p>
         <p>
-          To monitor the temperature of the water, initially we decided to use a thermocouple. Further research into thermocouples showed us the downsides such as relative cost and high circuity percision necessary to read a percise temperature. We decided to use a solid state temperature sensor with a tight degree accuracy.
+          To monitor the temperature of the water, initially we decided to use a thermocouple. Further research into thermocouples showed us the downsides such as relative cost and high circuity precision necessary to read a precise temperature. We decided to use a solid state temperature sensor with a tight degree accuracy.
         </p>
         <p>
           We decided to use the AVR boards provided by our professor because of our experience programming them and the ease of access. We used a LCD and Keypad along with this for displaying settings information and current temperature, with the keypad for inputting settings.
         </p>
+        <p>
+          To control the immersion heater and water pump, we opted for using a junction box with standard wall plugs controlled by a relay module. This would allow us to change what kind of heater and pump we could use. Perhaps most important of all, we could isolate our high voltage components in an insulated plastic box, along with a switch to shut off all high voltage components if necessary. If in the future we decide to build other high voltage projects, this junction box could come in handy.
+        </p>
         <h3>Software Decisions</h3>
         <p>
-          We decided to use the <a href="http://people.ece.cornell.edu/land/courses/ece4760/TinyRealTime/index.html">TinyRealTime (TRT)</a> kernel for running our code. We decided to do this because we would have multiple "threads" running at various times, but with no hard time requirements. A delay in reading data from the temperature sensor or outputting data to the LCD would not result in a malfunction. 
+          We decided to use the <a href="http://people.ece.cornell.edu/land/courses/ece4760/TinyRealTime/index.html">TinyRealTime (TRT)</a> kernel for running our code. We decided to do this because we would have multiple "threads" running at various times, but with no hard time requirements. A delay in reading data from the temperature sensor or outputting data to the LCD would not result in a malfunction.
         </p>
         <p>
           We decided to model the system using a proportional-integral-derivative (PID) controller. We feel that the body of water fits this system as there is a lag between heating the water and when the water is circulated and the temperature sensor registers the change. Also, the heating element does not turn hot immediately.
+        </p>
+        <h3>Background Math</h3>
+        <p>
+          Our Sous-vide cooker has two stages. During the first stage, an empty bath of water is heated to a specified temperature. This is governed by Fourier's law of conduction, Q = k * grad_T. In this equation, Q is the heat generation, k is the thermal conductivity of the material being heated, and grad_T is the temperature gradient. For our project, Q is simply the power output by the heat generator (300 W) and k is the thermal conductivity of water (0.52 W * m^-1 * K^-1). This lets us determine the temperature distribution at the point where the heating element contacts the water. Since we are using a pump to circulate the water, there is also the convection equation to consider. The convection equation is *ADD THIS*. This equation can be solved to find the temperature at a given time as well as the temperature at steady state. However, solving this partial differential equation is difficult. Fortunately, we can measure the temperature of the water directly so there is no need to solve this equation. The second stage requires heating food to the desired temperature. This process is modeled by the heat equation *ADD THIS*. This is a partial differential equation and the closed form solution is an infinite series of decaying sine waves. Although we cannot compute the solution directly on a microcontroller, we can get a reasonable estimate for the temperature at the center of the food. This is because at the center of the material, most of the sinusoidal terms.
+        </p>
+        <p>
+          We are using a simplified, 1-dimensional model of the heat transfer between the water and the food we are cooking to predict the actual temperature of the food. In this model, we assume that the temperature surrounding the food is kept at a constant temperature. This is a reasonable assumption since we are using the pump to circulate the water and the controller to keep the temperature constant. The second assumption we make is that the temperature of the food changes slowly. This assumption let's us use first order approximations to solve the heat equation without sacrificing too much accuracy. We justify this assumption with the fact that most foods have a low thermal conductivity. Additionally this lets us use more cycles to process the data since the temperature will not change significantly after a few seconds.
+        </p>
+        <h3>Software Tradeoffs</h3>
+        <p>
+          The only significant sacrifice we had to make was accuracy in the food temperature. In order to calculate the temperature of the food we needed to use a first order Pade approximation for the exponential function. This is a quick method which provides reasonable accuracy. The Pade approximation has the added benefit of being strictly less than the actual value of the exponential function. This means that the food we are cooking is guaranteed to be at least the reported value and no more than the water temperature. Thus if we report that the food is at a safe temperature to consume, then we know that the food is safe to consume.
+        </p>
+        <h3>Previous Work</h3>
+        <p>
+          The Sous-vide method of cooking is not patented. There are commercial Sous-vide cookers available, however, since we are not using any components of these devices
         </p>
       </section>
       
@@ -120,30 +140,30 @@
           <div class="span5">
             <table id="table-parts" class="table table-striped table-condensed" style="font-size:1.2em">
               <thead>
-                <tr><th>Cost</th><th>Part</th></tr>
+                <tr><th>Cost</th><th>Part</th><th>Vendor</th></tr>
               </thead>
               <tbody>
-                <tr><td>$6.97</td><td>Styrofoam Cooler</td></tr>
-                <tr><td>$8.21</td><td>Aquarium Pump</td></tr>
-                <tr><td>$7.05</td><td>Immersion Heater</td></tr>
-                <tr><td>$8.99</td><td>2-Channel Relay Module</td></tr>
-                <tr><td>$0.98</td><td>2-Gang Electrical Box</td></tr>
-                <tr><td>$0.74</td><td>Combination Wall Plate</td></tr>
-                <tr><td>$0.59</td><td>Duplex Electrical Outlet</td></tr>
-                <tr><td>$0.69</td><td>Single Pole Switch</td></tr>
+                <tr><td>$6.97</td><td>Styrofoam Cooler</td><td>Lowe's</td></tr>
+                <tr><td>$8.21</td><td>Aquarium Pump</td><td><a href="http://www.amazon.com/gp/product/B000E5Q8MA/ref=oh_details_o01_s00_i00">Amazon</a></td></tr>
+                <tr><td>$7.05</td><td>Immersion Heater</td><td><a href="http://www.amazon.com/gp/product/B000I8VE68/ref=oh_details_o02_s00_i00">Amazon</a></td></tr>
+                <tr><td>$8.99</td><td>2-Channel Relay Module</td><td><a href="http://www.amazon.com/gp/product/B0057OC6D8/ref=oh_details_o03_s00_i00">Amazon</a></td></tr>
+                <tr><td>$0.98</td><td>2-Gang Electrical Box</td><td>Lowe's</td></tr>
+                <tr><td>$0.74</td><td>Combination Wall Plate</td><td>Lowe's</td></tr>
+                <tr><td>$0.59</td><td>Duplex Electrical Outlet</td><td>Lowe's</td></tr>
+                <tr><td>$0.69</td><td>Single Pole Switch</td><td>Lowe's</td></tr>
                 
-                <tr><td>$6.00</td><td>Mega644</td></tr>
-                <tr><td>$4.00</td><td>PC Board</td></tr>
-                <tr><td>$2.00</td><td>9V Battery</td></tr>
-                <tr><td>$8.00</td><td>LCD Display</td></tr>
-                <tr><td>$6.00</td><td>Keypad</td></tr>
-                <tr><td>$1.62</td><td>Piezo Buzzer</td></tr>
+                <tr><td>$6.00</td><td>Mega644</td><td>Professor</td></tr>
+                <tr><td>$4.00</td><td>PC Board</td><td>Professor</td></tr>
+                <tr><td>$2.00</td><td>9V Battery</td><td>Professor</td></tr>
+                <tr><td>$8.00</td><td>LCD Display</td><td>Professor</td></tr>
+                <tr><td>$6.00</td><td>Keypad</td><td>Professor</td></tr>
+                <tr><td>$1.62</td><td>Piezo Buzzer</td><td><a href="http://search.digikey.com/us/en/products/CEB-20D64/102-1126-ND/412385">Digikey</a></td></tr>
               </tbody>
               <tfoot>
-                <tr><th>$61.84</th><th>Total</th></tr>
+                <tr><th>$61.84</th><th>Total</th><th></th></tr>
               </tfoot>
             </table>
-            <p>Our goal was to keep the total parts under $75. We didn't have to scavange anything to keep this goal.</p>
+            <p>Our goal was to keep the total parts under $75. We didn't have to scavenge anything to keep this goal.</p>
           </div>
           <div class="span7">
             <div id="carousel-parts" class="carousel slide">
@@ -242,7 +262,7 @@
         
         <h2>Hardware</h2>
         <p>
-          First thing we did was buy the parts we needed. We used a few places to source the parts, with links to the shops in the "Interesting Links" section. When buying parts, we usually opted for the cheapest solution, as we did not feel we would need extra performance for this application.
+          First thing we did was buy the parts we needed. We used a few places to source the parts, with links to the shops in the Appendix section. When buying parts, we usually opted for the cheapest solution, as we did not feel we would need extra performance for this application.
         </p>
         <div class="row">
           <p class="span6">
@@ -258,9 +278,14 @@
           </div>
         </div>
         <div class="row">
-          <p class="span6">
-            The most complicated module after the PC Board is the power module. We assembled the power module using the relay module, electrical box, electrical outlet, single pole switch and wall plate. We decided to use a plastic electrical box for safety reasons since it will not be mounted in a wall. We added the switch as a safety shut off. The relay operates off of 5V signals that are fed from the PC board into the box. The box also has a 110V input plug to connect to a wall socket. We are then able to plug the immersion heater and aquarium pump into the box and controll them independently using the microcontroller.
-          </p>
+          <div class="span6">
+            <p>
+              The most complicated module after the PC Board is the power module. We assembled the power module using the relay module, electrical box, electrical outlet, single pole switch and wall plate. We decided to use a plastic electrical box for safety reasons since it will not be mounted in a wall. We added the switch as a safety shut off. The relay operates off of 5V signals that are fed from the PC board into the box. The box also has a 110V input plug to connect to a wall socket. We are then able to plug the immersion heater and aquarium pump into the box and control them independently using the microcontroller.
+            </p>
+            <p>
+              One of the advantages of using a junction box as the power module is that we are able to change what kind of heater and pump we use. It is reasonable to change our heater to perhaps a hot pot that may heat up faster and have less losses (but able to cook less food).
+            </p>
+          </div>
           <div class="span6">
             <div class="thumbnail">
               <img src="img/build/power.jpg" alt />
@@ -291,6 +316,19 @@
         </div>
         <div class="row">
           <p class="span6">
+            There was a board designed to house the Bluetooth module (an RN-42). This board had a LP2951 voltage regulator to shift the 5 volts from the Atmega644 to the 3.3 Volts required by the Bluetooth module. We connected the circuit as prescribed by the datasheet, but found that the output of the regulator varied too much. A project from last year, the pace clock project, used the same Bluetooth module and voltage regulator. They had the same issue we discovered and fixed it with a 10 micro-Farad capacitor. However, when we applied this fix, our regulator overheated and stopped working. By this point in the project, it was too late to obtain a new regulator, so we attempted to use a trimpot to control the voltage. Although the trimpot was able to control the voltage, too much current was sent to the Bluetooth module and it was rendered unusable.
+          </p>
+          <div class="span6">
+            <div class="thumbnail">
+              <img src="img/build/bluetooth.jpg" alt />
+              <div class="caption">
+                Bluetooth Module
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <p class="span6">
             We use a IC temperature sensor to keep track of the water temperature in the box. The LM35 we use has a 0.5&deg;C accuracy range to allow for precise temperature measurement. We waterproofed the temperature sensor by putting heat shrink around it and sealing it. We feel that the slight loss in conductivity from the heat shrink is acceptable when considering the specific heat and quantity of water. We placed the completed temperature probe in the box near the water pump to ensure that it is exposed to temperature differences relatively quickly.
           </p>
           <div class="span6">
@@ -311,116 +349,209 @@
         
         <h2>Software</h2>
         <p>
-          Our microcontroller of choice is the Atmel mega644. It is an 8-bit microcontroller with an abundance of i/o ports and easily programmable using C.
+          Our microcontroller of choice is the Atmel mega644, an 8-bit microcontroller. The project was coded in C. We use an embedded OS, <a href="http://people.ece.cornell.edu/land/courses/ece4760/TinyRealTime/index.html">Tiny Real Time</a>, to manage the various tasks we need to accomplish.
         </p>
         <p>
-          Our code is organized into 3 tasks. The PID controller task for setting the heater on/off, the keypad task for reading input and the display task for writing to the LCD. 
+          Our code is organized into 4 tasks, PID control, getting input from the keypad, displaying the results, and turning on an alarm. The PID controller task determines how much power the heater should add to the system. Since the water heats so slowly and the circulator keeps the temperature uniform, the controller is effectively a proportional controller. The system has almost no overshoot, and no one location in the cooker will ever be significantly warmer than any other location. The PID controller runs about 50 times per second. When it executes, it first reads the value in the ADC high register. This is where the output from the LM-34 is sent. Since the LM-34's output voltage is directly proportional to the temperature, no additional manipulation is required to extract the temperature. Our PID algorithm is the same as we used in <a href="http://people.ece.cornell.edu/land/courses/ece4760/labs/s2012/lab4.html">lab 4</a>, only our parameters were different. Our final values were K_p = 9, T_i = 0.1, and T_d = 0.08. After performing the PID algorithm, the task signals the ADC to start another conversion.
         </p>
-        <div class="row">
-          <div class="span6">
-            <p>Explanation of code</p>
-          </div>
-          <div class="span6">
-            <pre class="prettyprint linenums lang-c">int example = "example c code";</pre>
-          </div>
-        </div>
+        <p>
+          The keypad task is used to read user input. This task is a modified version from the keypad code used in <a href="http://people.ece.cornell.edu/land/courses/ece4760/labs/s2012/lab3.htm">lab 3</a>, except we now allow for floating point values and the ability to delete entries. After debouncing the signal using a debounce state machine, we determine what button was pressed. If the cooker is in "waiting for input" mode, the program stores the input in a buffer if it is numeric, the decimal point, or the backspace key, returns to the previous mode, if the cancel key is pressed, or commits the value in the buffer if the enter key is pressed. If the cooker is in "display mode" then this task witches mode if the appropriate button is pressed. This task handles debouncing by running every 30 milliseconds when a button is pressed and every 1 millisecond when there is no signal to debounce.  
+        </p>
+        <p>
+          The display task for writing to the LCD refreshes the display every 100 milliseconds. If the program is in "display mode" the program reads and displays the current temperature. Otherwise, the program gets the input buffer and displays the contents of the buffer on the LCD.
+        </p>
+        <p>
+          The buzzer task simply enables or disables the TIMER1 interrupt whenever the user needs to be notified. This occurs when the water first reaches the desired temperature and when the calculated value for the food reaches the desired temperature.
+        </p>
+        <p>
+          The TIMER1 interrupt  triggers every 1 kHz and toggles the voltage to a piezo-electric speaker, creating an alarm which notifies the user of significant events.
+        </p>
+        <p>
+          In addition to the microcontroller code, there is an Android application which can send commands over Bluetooth to the microcontroller. This application scans for available Bluetooth devices, prompts the user to pair with a device, and then allows the user to type in and send messages to the microcontroller. There is a limited UI since the Bluetooth module failed during the project. The Bluetooth connection is managed by Android SDK's BluetoothAdapter class. Determining what data to send and what to do when the data is received is the portion of the application that was written for this project.
+        </p>
+        <p>
+          This application used the Android SDK and is targeted for devices running API level 10 or higher. The Android OS is open source and available from .
+        </p>
       </section>
       
       <section id="documentation">
         <div class="page-header">
           <h1>Documentation <small>How do I use this thing?</small></h1>
         </div>
+        <h4>
+          Successful use of our cooker requires strict adherence to the following procedures.
+        </h4>
         <p>
-          Setting up
-        </P>
-        <p>
-          Starting/Settings
+          Before turning the heater on, make sure the cooker is filled with water such that the temperature probe, heater, and pump are completely submerged in liquid and that the top of the cooker is secured in place. 
         </p>
         <p>
-          Cleanup
+          The heater should be plugged into the heater plug, and the pump into the pump plug. otherwise the heater will constantly be on and you run the risk of overcooking the food and damaging the temperature sensor. Additionally switching the pump on and off can induce stress which degrades its performance. Thus you should ensure that the heater is plugged into the heater plug and the pump into the pump plug.
         </p>
+        <p>
+          Do not add food to the cooker unless the water is already heated to the desired temperature. If the food is added prematurely then the calculations used to determine the temperature of the food will not be accurate and a minimum temperature cannot be guaranteed.
+        </p>
+        <p>
+          To start the cooker simply flip the switch on the power box to the on position. The default temperature for both water and food is 100 degrees Fahrenheit. The default initial temperature is 77 degrees Fahrenheit. The default thermal diffusivity is 1. These settings can be changed using the keypad interface.
+        </p>
+        <p>
+          To enter display mode from any input mode:
+          <ul>
+            <li>press 'A' on the keypad to discard your input</li>
+            <li>press 'D' on the keypad to enter your input</li>
+          </ul>
+        </p>
+        <p>
+          To change the desired temperature of the water: 
+          <ol>
+            <li>Enter Display Mode</li>
+            <li>Press 'A' on the keypad</li>
+            <li>Enter your new desired temperature</li>
+            <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
+          </ol>
+        </p>
+        <p>
+          To change the desired temperature of the food:
+          <ol>
+            <li>Enter Display Mode</li>
+            <li>Press 'B' on the keypad</li>
+            <li>Enter your new desired temperature</li>
+            <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
+          </ol>
+        </p>
+        <p>
+          To set the initial temperature of the food:
+          <ol>
+            <li>Enter Display Mode</li>
+            <li>Press 'C' on the keypad</li>
+            <li>Enter the initial temperature</li>
+            <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
+          </ol>
+        </p>
+        <p>
+          To set the thermal diffusivity of the food
+          <ol>
+            <li>Enter Display Mode</li>
+            <li>Press 'C' on the keypad</li>
+            <li>Enter the thermal diffusivity</li>
+            <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
+          </ol>
+        </p>
+        <p>
+          In input mode the '*' key lets you input a '.' character (decimal point) and the '#' serves as a backspace key.
+        </p>
+        <p>
+          To conserve energy, remove food from the cooker as soon as possible and turn the switch on the power box to the off setting.
+        </p>        
       </section>
       
       <section id="results">
         <div class="page-header">
-          <h1>Results <small>How does it perform?</small></h1>
-        </div>        
+          <h1>Results / Conclusions <small>How does it perform?</small></h1>
+        </div>
         <p>
-          We feel that wehave achieved our goal of making a usable sous-vide cooker.
+          We feel that we have achieved our goal of making a usable sous-vide cooker. The cooker has an accuracy of about 1&deg;F which is perfectly suitable for cooking food. We tested the cooker up to 150&deg;F at an extended period of time, which is the appropriate temperature for medium-well steak. We ensured safety in the high voltage components by using an insulated junction box with all the high voltage components, along with a shut off switch. There should be no interference with other people and it should be easily usable through the keypad interface.
+        </p>
+        <h3>Task Breakup</h3>
+        <p>
+          Harrison Wong worked on hardware design and setup. He also worked on the website layout, setup and pictures.
+        </p>
+        <p>
+          David Diner worked on software for the AVR and the Android bluetooth app.
+        </p>
+        <p>
+          Together we both worked on debugging the software, writing up the website and keeping on track.
+        </p>
+        <h3>Further Extensions</h3>
+        <p>
+          We hoped to add a water level sensor to measure the volume of the food being added to the cooker. Unfortunately, the sensor didn't arrive in time for our project, so we were unable to use it in the project. The ultrasonic ranging sensor would have been used to measure the volume of water and the volume of the food to determine the heating speed of the food.
+        </p>
+        <p>
+          We could also package our hardware better such as making a waterproof box to house the electronics in.
         </p>
       </section>
       
       <section id="media">
         <div class="page-header">
           <h1>Media <small>What does this thing look like?</small></h1>
-        </div>
-        <div class="tabbable">
-          <ul class="nav nav-tabs">
-            <li class="active"><a href="#photos" data-toggle="tab">Photos</a></li>
-            <li><a href="#videos" data-toggle="tab">Videos</a></li>
-          </ul>
-          <div class="tab-content">
-            <div class="tab-pane fade in active" id="photos">
-              <div id="carousel-pictures" class="carousel slide">
-                <div class="carousel-inner">
-                  <div class="active item">
-                    <img src="img/media/proto1.jpg" width="100%" alt />
-                    <div class="carousel-caption">
-                      <h4>Prototype Testing</h4>
-                    </div>
-                  </div>
-                  <div class="item">
-                    <img src="img/media/proto2.jpg" width="100%" alt />
-                    <div class="carousel-caption">
-                      <h4>Prototype Testing Heater</h4>
-                    </div>
-                  </div>
-                  <div class="item">
-                    <img src="img/media/proto3.jpg" width="100%" alt />
-                    <div class="carousel-caption">
-                      <h4>Prototype Testing Box</h4>
-                    </div>
-                  </div>
-                  <div class="item">
-                    <img src="img/media/sous_vide_machine.jpg.scaled1000.jpg" width="100%" alt />
-                    <div class="carousel-caption">
-                      <h4>A commercial sous-vide cooker</h4>
-                    </div>
-                  </div>
-                  <div class="item">
-                    <img src="img/media/steak-sous-vide.jpg" width="100%" alt />
-                    <div class="carousel-caption">
-                      <h4>A picturesque sous-vide cooked steak</h4>
-                    </div>
-                  </div>
-                  
-                </div>
-                <a class="carousel-control left" href="#carousel-pictures" data-slide="prev">&lsaquo;</a>
-                <a class="carousel-control right" href="#carousel-pictures" data-slide="next">&rsaquo;</a>
+        </div>        
+        <div id="carousel-pictures" class="carousel slide">
+          <div class="carousel-inner">
+            <div class="active item">
+              <img src="img/media/running.jpg" width="100%" alt />
+              <div class="carousel-caption">
+                <h4>Cooker Running</h4>
               </div>
             </div>
-            <div class="tab-pane fade" id="videos">
-              <h4>Coming Soon!</h4>
+            <div class="item">
+              <img src="img/media/running1.jpg" width="100%" alt />
+              <div class="carousel-caption">
+                <h4>Running</h4>
+              </div>
+            </div>
+            <div class="item">
+              <img src="img/media/running2.jpg" width="100%" alt />
+              <div class="carousel-caption">
+                <h4>Running</h4>
+              </div>
+            </div>
+            <div class="item">
+              <img src="img/media/running3.jpg" width="100%" alt />
+              <div class="carousel-caption">
+                <h4>Running</h4>
+              </div>
+            </div>
+            <div class="item">
+              <img src="img/media/proto1.jpg" width="100%" alt />
+              <div class="carousel-caption">
+                <h4>Prototype Testing</h4>
+              </div>
+            </div>
+            <div class="item">
+              <img src="img/media/proto2.jpg" width="100%" alt />
+              <div class="carousel-caption">
+                <h4>Prototype Testing Heater</h4>
+              </div>
+            </div>
+            <div class="item">
+              <img src="img/media/proto3.jpg" width="100%" alt />
+              <div class="carousel-caption">
+                <h4>Prototype Testing Box</h4>
+              </div>
+            </div>
+            <div class="item">
+              <img src="img/media/sous_vide_machine.jpg" width="100%" alt />
+              <div class="carousel-caption">
+                <h4>A commercial sous-vide cooker</h4>
+              </div>
+            </div>
+            <div class="item">
+              <img src="img/media/steak-sous-vide.jpg" width="100%" alt />
+              <div class="carousel-caption">
+                <h4>A picturesque sous-vide cooked steak</h4>
+              </div>
             </div>
             
           </div>
+          <a class="carousel-control left" href="#carousel-pictures" data-slide="prev">&lsaquo;</a>
+          <a class="carousel-control right" href="#carousel-pictures" data-slide="next">&rsaquo;</a>
         </div>
       </section>
       
       <section id="links">
         <div class="page-header">
-          <h1>Interesting Links</h1>
+          <h1>Appendix / Interesting Links</h1>
         </div>
         <div class="row">
           <div class="span3">
             <h3>Project Resources</h3>
             <ul class="unstyled">
-              <li><a href="https://github.com/HarrisonW/ECE4760">Source Code (github)</a></li>
+              <li><a href="https://github.com/HarrisonW/ECE4760/tree/master/SousVide">Source Code (github)</a></li>
               <li><a href="">Schematic</a></li>
               <li><a href="http://www.digikey.com/">Digikey</a></li>
               <li><a href="http://www.sainsmart.com">SainSmart</a></li>
               <li><a href="http://www.amazon.com/">Amazon</a></li>
               <li><a href="http://www.lowes.com/">Lowe's</a></li>
+              <li><a href="http://developer.android.com/sdk/index.html">Android SDK</a></li>
             </ul>
           </div>
           <div class="span3">
