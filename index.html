@@ -81,7 +81,7 @@
           So why make a sous-vide cooker ourselves? What makes our cooker different? We were able to create our cooker for under $75, which is in stark contrast to the $300 sous-vide cookers for home use. Just a sous-vide controller itself costs $150, not including a heating unit. Moreover, we implement advanced features, such as a water level monitor, as well as a automatic timer that can set cooking times depending on the quantity of food cooking.
         </p>
         <p>
-          So did it work? You bet it did! We've tested it up to 150&deg;F which is is good enough for medium-well cooked steak (we refuse to cook well). The system performs perfectly for an extended amount of time at this temperature.
+          So did it work? You bet it did! We've tested it up to 150&deg;F which is is good enough for medium-well cooked steak (we refuse to cook well done). The system performs perfectly for an extended amount of time at this temperature.
         </p>
       </section>
       
@@ -117,14 +117,14 @@
         </p>
         <h3>Background Math</h3>
         <p>
-          Our Sous-vide cooker has two stages. During the first stage, an empty bath of water is heated to a specified temperature. This is governed by Fourier's law of conduction, Q = k * grad_T. In this equation, Q is the heat generation, k is the thermal conductivity of the material being heated, and grad_T is the temperature gradient. For our project, Q is simply the power output by the heat generator (300 W) and k is the thermal conductivity of water (0.52 W * m^-1 * K^-1). This lets us determine the temperature distribution at the point where the heating element contacts the water. Since we are using a pump to circulate the water, there is also the convection equation to consider. The convection equation is *ADD THIS*. This equation can be solved to find the temperature at a given time as well as the temperature at steady state. However, solving this partial differential equation is difficult. Fortunately, we can measure the temperature of the water directly so there is no need to solve this equation. The second stage requires heating food to the desired temperature. This process is modeled by the heat equation *ADD THIS*. This is a partial differential equation and the closed form solution is an infinite series of decaying sine waves. Although we cannot compute the solution directly on a microcontroller, we can get a reasonable estimate for the temperature at the center of the food. This is because at the center of the material, most of the sinusoidal terms.
+          Our Sous-vide cooker has two stages. During the first stage, an empty bath of water is heated to a specified temperature. This is governed by Fourier's law of conduction, <img src="img/eqn/fourier.png" alt />. In this equation, Q is the heat generation, k is the thermal conductivity of the material being heated, and grad_T is the temperature gradient. For our project, Q is simply the power output by the heat generator (300 W) and k is the thermal conductivity of water (0.52 W * m^-1 * K^-1). This lets us determine the temperature distribution at the point where the heating element contacts the water. Since we are using a pump to circulate the water, there is also the convection equation to consider. The convection equation is <img src="img/eqn/convection.png" alt />. This equation can be solved to find the temperature at a given time as well as the temperature at steady state. However, solving this partial differential equation is difficult. Fortunately, we can measure the temperature of the water directly so there is no need to solve this equation. The second stage requires heating food to the desired temperature. This process is modeled by the heat equation <img src="img/eqn/heat.png" alt />. This is a partial differential equation and the closed form solution is an infinite series of decaying sine waves. Although we cannot compute the solution directly on a microcontroller, we can get a reasonable estimate for the temperature at the center of the food. This is because at the center of the material, most of the sinusoidal terms drop out.
         </p>
         <p>
-          We are using a simplified, 1-dimensional model of the heat transfer between the water and the food we are cooking to predict the actual temperature of the food. In this model, we assume that the temperature surrounding the food is kept at a constant temperature. This is a reasonable assumption since we are using the pump to circulate the water and the controller to keep the temperature constant. The second assumption we make is that the temperature of the food changes slowly. This assumption let's us use first order approximations to solve the heat equation without sacrificing too much accuracy. We justify this assumption with the fact that most foods have a low thermal conductivity. Additionally this lets us use more cycles to process the data since the temperature will not change significantly after a few seconds.
+          We are using a simplified, 1-dimensional model of the heat transfer between the water and the food we are cooking to predict the actual temperature of the food. In this model, we assume that the temperature surrounding the food is kept at a constant temperature. This is a reasonable assumption since we are using the pump to circulate the water and the controller to keep the temperature constant. The second assumption we make is that the temperature of the food changes slowly. This assumption lets us use first order approximations to solve the heat equation without sacrificing too much accuracy. We use this approximation to determine the temperature of the food: <img src="img/eqn/approximation.png" alt />. We justify this assumption with the fact that most foods have a low thermal conductivity. Additionally this lets us use more cycles to process the data since the temperature will not change significantly after a few seconds.
         </p>
         <h3>Software Tradeoffs</h3>
         <p>
-          The only significant sacrifice we had to make was accuracy in the food temperature. In order to calculate the temperature of the food we needed to use a first order Pade approximation for the exponential function. This is a quick method which provides reasonable accuracy. The Pade approximation has the added benefit of being strictly less than the actual value of the exponential function. This means that the food we are cooking is guaranteed to be at least the reported value and no more than the water temperature. Thus if we report that the food is at a safe temperature to consume, then we know that the food is safe to consume.
+          The only significant sacrifice we had to make was accuracy in the food temperature. In order to calculate the temperature of the food we needed to use a first order Pade approximation (<img src="img/eqn/pade.png" alt />) for the exponential function. This is a quick method which provides reasonable accuracy. The Pade approximation has the added benefit of being strictly less than the actual value of the exponential function. This means that the food we are cooking is guaranteed to be at least the reported value and no more than the water temperature. Thus if we report that the food is at a safe temperature to consume, then we know that the food is safe to consume.
         </p>
         <h3>Previous Work</h3>
         <p>
@@ -467,6 +467,25 @@
         </p>
         <p>
           We could also package our hardware better such as making a waterproof box to house the electronics in.
+        </p>
+        <h3>Ethical Considerations</h3>
+        <p>
+          We refer to the <a href="http://www.ieee.org/about/corporate/governance/p7-8.html">IEEE Code of Ethics</a>.
+        </p>
+        <p>
+          We made sure to make our project as safe as possible by using an enclosing insulated electrical box for high voltage components. We make sure to clearly label where the plugs are, and have clear documentation concerning this.
+        </p>
+        <p>
+          We do not anticipate any conflicts of interest, patent considerations, or other intellectual property to have any considerations on our design, as our idea is well founded in existing literature.
+        </p>
+        <p>
+          Our claims are honest in their work, and respresent a real formulation of our data. We do not aim to misrepresent any claims that we have made.
+        </p>
+        <p>
+          We appreciate any criticism of our work, and are always welcome to improvements to it. For this, we haver released our source code as open source to allow further improvements to be made to it if wanted and to allow further advancement to be made.
+        </p>
+        <p>
+          We have made our project as accessable as possible within normal means, and we feel that it should be useful to anyone capable of cooking food normally.
         </p>
       </section>
       
