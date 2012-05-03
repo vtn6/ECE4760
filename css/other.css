@@ -8,6 +8,9 @@ body {
 #carousel-pictures .item {
   height: 500px;
 }
+.carousel .item img {
+  width: 100%;
+}
 p {
   font-size: 1.2em;
   margin-top: 1em;

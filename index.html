@@ -120,7 +120,7 @@
           Our Sous-vide cooker has two stages. During the first stage, an empty bath of water is heated to a specified temperature. This is governed by Fourier's law of conduction, <img src="img/eqn/fourier.png" alt />. In this equation, Q is the heat generation, k is the thermal conductivity of the material being heated, and grad_T is the temperature gradient. For our project, Q is simply the power output by the heat generator (300 W) and k is the thermal conductivity of water (0.52 W * m^-1 * K^-1). This lets us determine the temperature distribution at the point where the heating element contacts the water. Since we are using a pump to circulate the water, there is also the convection equation to consider. The convection equation is <img src="img/eqn/convection.png" alt />. This equation can be solved to find the temperature at a given time as well as the temperature at steady state. However, solving this partial differential equation is difficult. Fortunately, we can measure the temperature of the water directly so there is no need to solve this equation. The second stage requires heating food to the desired temperature. This process is modeled by the heat equation <img src="img/eqn/heat.png" alt />. This is a partial differential equation and the closed form solution is an infinite series of decaying sine waves. Although we cannot compute the solution directly on a microcontroller, we can get a reasonable estimate for the temperature at the center of the food. This is because at the center of the material, most of the sinusoidal terms drop out.
         </p>
         <p>
-          We are using a simplified, 1-dimensional model of the heat transfer between the water and the food we are cooking to predict the actual temperature of the food. In this model, we assume that the temperature surrounding the food is kept at a constant temperature. This is a reasonable assumption since we are using the pump to circulate the water and the controller to keep the temperature constant. The second assumption we make is that the temperature of the food changes slowly. This assumption lets us use first order approximations to solve the heat equation without sacrificing too much accuracy. We use this approximation to determine the temperature of the food: <img src="img/eqn/approximation.png" alt />. We justify this assumption with the fact that most foods have a low thermal conductivity. Additionally this lets us use more cycles to process the data since the temperature will not change significantly after a few seconds.
+          We are using a simplified, 1-dimensional model of the heat transfer between the water and the food we are cooking to predict the actual temperature of the food. In this model, we assume that the temperature surrounding the food is kept at a constant temperature. This is a reasonable assumption since we are using the pump to circulate the water and the controller to keep the temperature constant. The second assumption we make is that the temperature of the food changes slowly. This assumption lets us use first order approximations to solve the heat equation without sacrificing too much accuracy. We use this approximation to determine the temperature of the food: <img src="img/eqn/approximation.png" alt />. We justify this assumption with the fact that exponential term dies off quickly. Additionally this lets us use more cycles to process the data since the temperature will not change significantly after a few seconds.
         </p>
         <h3>Software Tradeoffs</h3>
         <p>
@@ -152,15 +152,16 @@
                 <tr><td>$0.59</td><td>Duplex Electrical Outlet</td><td>Lowe's</td></tr>
                 <tr><td>$0.69</td><td>Single Pole Switch</td><td>Lowe's</td></tr>
                 
-                <tr><td>$6.00</td><td>Mega644</td><td>Professor</td></tr>
-                <tr><td>$4.00</td><td>PC Board</td><td>Professor</td></tr>
-                <tr><td>$2.00</td><td>9V Battery</td><td>Professor</td></tr>
-                <tr><td>$8.00</td><td>LCD Display</td><td>Professor</td></tr>
-                <tr><td>$6.00</td><td>Keypad</td><td>Professor</td></tr>
+                <tr><td>$6.00</td><td>Mega644</td><td><a href="http://people.ece.cornell.edu/land/courses/ece4760/labs/s2012/lab5.html">Professor</a></td></tr>
+                <tr><td>$4.00</td><td>PC Board</td><td><a href="http://people.ece.cornell.edu/land/courses/ece4760/labs/s2012/lab5.html">Professor</a></td></tr>
+                <tr><td>$2.00</td><td>9V Battery</td><td><a href="http://people.ece.cornell.edu/land/courses/ece4760/labs/s2012/lab5.html">Professor</a></td></tr>
+                <tr><td>$8.00</td><td>LCD Display</td><td><a href="http://people.ece.cornell.edu/land/courses/ece4760/labs/s2012/lab5.html">Professor</a></td></tr>
+                <tr><td>$6.00</td><td>Keypad</td><td><a href="http://people.ece.cornell.edu/land/courses/ece4760/labs/s2012/lab5.html">Professor</a></td></tr>
                 <tr><td>$1.62</td><td>Piezo Buzzer</td><td><a href="http://search.digikey.com/us/en/products/CEB-20D64/102-1126-ND/412385">Digikey</a></td></tr>
+                <tr><td>$2.95</td><td>Header Socket/Plugs (5c ea)</td><td><a href="http://search.digikey.com/us/en/products/CEB-20D64/102-1126-ND/412385">Digikey</a></td></tr>
               </tbody>
               <tfoot>
-                <tr><th>$61.84</th><th>Total</th><th></th></tr>
+                <tr><th>$64.79</th><th>Total</th><th></th></tr>
               </tfoot>
             </table>
             <p>Our goal was to keep the total parts under $75. We didn't have to scavenge anything to keep this goal.</p>
@@ -169,79 +170,79 @@
             <div id="carousel-parts" class="carousel slide">
               <div class="carousel-inner">
                 <div class="active item">
-                  <img src="img/parts/heater.jpg" width="100%" alt />
+                  <img src="img/parts/heater.jpg" alt />
                   <div class="carousel-caption">
                     <h4>Immersion Heater</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/pump.jpg" width="100%" alt />
+                  <img src="img/parts/pump.jpg" alt />
                   <div class="carousel-caption">
                     <h4>Aquarium Pump</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/relay.jpg" width="100%" alt />
+                  <img src="img/parts/relay.jpg" alt />
                   <div class="carousel-caption">
                     <h4>2-Channel Relay Module</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/cooler.jpg" width="100%" alt />
+                  <img src="img/parts/cooler.jpg" alt />
                   <div class="carousel-caption">
                     <h4>Styrofoam Cooler</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/electricalbox.jpg" width="100%" alt />
+                  <img src="img/parts/electricalbox.jpg" alt />
                   <div class="carousel-caption">
                     <h4>2-Gang Electrical Box</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/outlet.jpg" width="100%" alt />
+                  <img src="img/parts/outlet.jpg" alt />
                   <div class="carousel-caption">
                     <h4>Duplex Electrical Outlet</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/switch.jpg" width="100%" alt />
+                  <img src="img/parts/switch.jpg" alt />
                   <div class="carousel-caption">
                     <h4>Single Pole Switch</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/mega644.jpg" width="100%" alt />
+                  <img src="img/parts/mega644.jpg" alt />
                   <div class="carousel-caption">
                     <h4>Mega644</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/board.png" width="100%" alt />
+                  <img src="img/parts/board.png" alt />
                   <div class="carousel-caption">
                     <h4>PC Board</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/battery.jpg" width="100%" alt />
+                  <img src="img/parts/battery.jpg" alt />
                   <div class="carousel-caption">
                     <h4>9V Battery</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/lcd.jpg" width="100%" alt />
+                  <img src="img/parts/lcd.jpg" alt />
                   <div class="carousel-caption">
                     <h4>LCD</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/keypad.jpg" width="100%" alt />
+                  <img src="img/parts/keypad.jpg" alt />
                   <div class="carousel-caption">
                     <h4>Keypad</h4>
                   </div>
                 </div>
                 <div class="item">
-                  <img src="img/parts/piezo.jpg" width="100%" alt />
+                  <img src="img/parts/piezo.jpg" alt />
                   <div class="carousel-caption">
                     <h4>Piezo</h4>
                   </div>
@@ -346,6 +347,12 @@
             </div>
           </div>
         </div>
+        <div class="thumbnail">
+          <img src="img/schematic.png" alt />
+          <div class="caption">
+            Schematic of connections
+          </div>
+        </div>
         
         <h2>Software</h2>
         <p>
@@ -395,47 +402,47 @@
         </p>
         <p>
           To enter display mode from any input mode:
-          <ul>
-            <li>press 'A' on the keypad to discard your input</li>
-            <li>press 'D' on the keypad to enter your input</li>
-          </ul>
         </p>
+        <ul>
+          <li>press 'A' on the keypad to discard your input</li>
+          <li>press 'D' on the keypad to enter your input</li>
+        </ul>
         <p>
           To change the desired temperature of the water: 
-          <ol>
-            <li>Enter Display Mode</li>
-            <li>Press 'A' on the keypad</li>
-            <li>Enter your new desired temperature</li>
-            <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
-          </ol>
         </p>
+        <ol>
+          <li>Enter Display Mode</li>
+          <li>Press 'A' on the keypad</li>
+          <li>Enter your new desired temperature</li>
+          <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
+        </ol>
         <p>
           To change the desired temperature of the food:
-          <ol>
-            <li>Enter Display Mode</li>
-            <li>Press 'B' on the keypad</li>
-            <li>Enter your new desired temperature</li>
-            <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
-          </ol>
         </p>
+        <ol>
+          <li>Enter Display Mode</li>
+          <li>Press 'B' on the keypad</li>
+          <li>Enter your new desired temperature</li>
+          <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
+        </ol>
         <p>
           To set the initial temperature of the food:
-          <ol>
-            <li>Enter Display Mode</li>
-            <li>Press 'C' on the keypad</li>
-            <li>Enter the initial temperature</li>
-            <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
-          </ol>
         </p>
+        <ol>
+          <li>Enter Display Mode</li>
+          <li>Press 'C' on the keypad</li>
+          <li>Enter the initial temperature</li>
+          <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
+        </ol>
         <p>
           To set the thermal diffusivity of the food
-          <ol>
-            <li>Enter Display Mode</li>
-            <li>Press 'C' on the keypad</li>
-            <li>Enter the thermal diffusivity</li>
-            <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
-          </ol>
         </p>
+        <ol>
+          <li>Enter Display Mode</li>
+          <li>Press 'C' on the keypad</li>
+          <li>Enter the thermal diffusivity</li>
+          <li>Press 'D' to save the new temperature OR Press 'A' to return to display mode (and ignore the current input)</li>
+        </ol>
         <p>
           In input mode the '*' key lets you input a '.' character (decimal point) and the '#' serves as a backspace key.
         </p>
@@ -496,55 +503,55 @@
         <div id="carousel-pictures" class="carousel slide">
           <div class="carousel-inner">
             <div class="active item">
-              <img src="img/media/running.jpg" width="100%" alt />
+              <img src="img/media/running.jpg" alt />
               <div class="carousel-caption">
                 <h4>Cooker Running</h4>
               </div>
             </div>
             <div class="item">
-              <img src="img/media/running1.jpg" width="100%" alt />
+              <img src="img/media/running1.jpg" alt />
               <div class="carousel-caption">
                 <h4>Running</h4>
               </div>
             </div>
             <div class="item">
-              <img src="img/media/running2.jpg" width="100%" alt />
+              <img src="img/media/running2.jpg" alt />
               <div class="carousel-caption">
                 <h4>Running</h4>
               </div>
             </div>
             <div class="item">
-              <img src="img/media/running3.jpg" width="100%" alt />
+              <img src="img/media/running3.jpg" alt />
               <div class="carousel-caption">
                 <h4>Running</h4>
               </div>
             </div>
             <div class="item">
-              <img src="img/media/proto1.jpg" width="100%" alt />
+              <img src="img/media/proto1.jpg" alt />
               <div class="carousel-caption">
                 <h4>Prototype Testing</h4>
               </div>
             </div>
             <div class="item">
-              <img src="img/media/proto2.jpg" width="100%" alt />
+              <img src="img/media/proto2.jpg" alt />
               <div class="carousel-caption">
                 <h4>Prototype Testing Heater</h4>
               </div>
             </div>
             <div class="item">
-              <img src="img/media/proto3.jpg" width="100%" alt />
+              <img src="img/media/proto3.jpg" alt />
               <div class="carousel-caption">
                 <h4>Prototype Testing Box</h4>
               </div>
             </div>
             <div class="item">
-              <img src="img/media/sous_vide_machine.jpg" width="100%" alt />
+              <img src="img/media/sous_vide_machine.jpg" alt />
               <div class="carousel-caption">
                 <h4>A commercial sous-vide cooker</h4>
               </div>
             </div>
             <div class="item">
-              <img src="img/media/steak-sous-vide.jpg" width="100%" alt />
+              <img src="img/media/steak-sous-vide.jpg" alt />
               <div class="carousel-caption">
                 <h4>A picturesque sous-vide cooked steak</h4>
               </div>
